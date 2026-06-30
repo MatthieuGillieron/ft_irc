@@ -3,9 +3,8 @@ NAME = ircserv
 CC = c++
 CFLAGS = -Wall -Wextra -Werror -std=c++98
 
+SRCS = src/main.cpp
 OBJDIR = obj
-
-SRCS = main.cpp
 
 OBJS = $(addprefix $(OBJDIR)/, $(SRCS:.cpp=.o))
 
@@ -15,7 +14,7 @@ $(NAME): $(OBJS)
 	$(CC) $(CFLAGS) -o $(NAME) $(OBJS)
 
 $(OBJDIR)/%.o: %.cpp
-	@mkdir -p $(OBJDIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
@@ -26,4 +25,4 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all clean fclean re
+.PHONY:	all	clean fclean re
