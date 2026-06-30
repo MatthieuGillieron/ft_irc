@@ -3,3 +3,7 @@
 .DS_Store
 
 .gitkeep
+.obj/*
+.obj
+
+ircserv
