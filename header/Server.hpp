@@ -38,7 +38,9 @@ class Server
     void run(); // poll
 
 	void setupSocket(); // socket ecoute
-	void socketClient();
+	void acceptClient();
+	void handleClient(int fd);
+	void disconnectClient(int fd);
 
     private:
 		unsigned int _port;

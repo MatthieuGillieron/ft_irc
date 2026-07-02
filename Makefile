@@ -3,7 +3,7 @@ NAME = ircserv
 CC = c++
 CFLAGS = -Wall -Wextra -Werror -std=c++98
 
-SRCS = src/main.cpp
+SRCS = src/main.cpp src/Server.cpp
 OBJDIR = obj
 
 OBJS = $(addprefix $(OBJDIR)/, $(SRCS:.cpp=.o))

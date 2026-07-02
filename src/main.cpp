@@ -1,5 +1,5 @@
 
-#include "Server.hpp"
+#include "../header/Server.hpp"
 
 #include <iostream>
 #include <cstdlib>
@@ -31,8 +31,8 @@ int main(int ac, char **av)
 
 	std::cout << " Running ..." << std::endl;
 
-	Server::setupSocket;
-	Server::socketClient;
+	Server server(port, password);
+	server.run();
 
 	return 0;
 }
