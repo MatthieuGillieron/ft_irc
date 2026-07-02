@@ -1,4 +1,6 @@
 
+#include "Server.hpp"
+
 #include <iostream>
 #include <cstdlib>
 
@@ -14,7 +16,7 @@ int main(int ac, char **av)
 	}
 
 
-	int port = std::atoi(av[1]);
+	unsigned int port = std::atoi(av[1]);
 	if (port < 1024 || port > 65535)
 	{
 		std::cout << "Error of range port : 1024 - 65535 " << std::endl;
@@ -28,6 +30,9 @@ int main(int ac, char **av)
 
 
 	std::cout << " Running ..." << std::endl;
+
+	Server::setupSocket;
+	Server::socketClient;
 
 	return 0;
 }

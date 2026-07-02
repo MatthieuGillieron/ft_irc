@@ -25,13 +25,32 @@
 
 
 
-class server
+class Server
 {
     public:
+    Server(unsigned int port, std::string password) : _port(port), _password(password) {};
+    ~Server() {};
+
+	std::string getPassword() const;
+	std::string getPort() const;
+	std::string getListenFd() const;
+
+    void run(); // poll
+
+	void setupSocket(); // socket ecoute
+	void socketClient();
 
     private:
+		unsigned int _port;
+		std::string _password;
+		int _listenFd;
+		std::vector<struct pollfd> _pollfds;
+		std::vector<Client*> _clients;
+
 
 };
+
+
 
 
 
