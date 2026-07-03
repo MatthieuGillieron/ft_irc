@@ -24,7 +24,7 @@ void Server::run()
 					acceptClient();
 				}
 				else
-				{		
+				{
 					handleClient(_pollfds[i].fd);
 				}
 			}
@@ -76,7 +76,7 @@ void Server::handleClient(int fd)
 	}
 }
 
-void Server::disconnectClient(int fd) 
+void Server::disconnectClient(int fd)
 {
 	close(fd);
 	for(size_t i = 0; i < _pollfds.size(); i++)
