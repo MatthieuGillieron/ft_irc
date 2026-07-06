@@ -1,5 +1,6 @@
 
 #include "../header/Server.hpp"
+#include "../header/Message.hpp"
 
 void Server::run()
 {
@@ -82,7 +83,12 @@ void Server::handleClient(int fd)
 					size_t pos = _clients[i]->getInBuffer().find("\r\n");
 					std::string line = _clients[i]->getInBuffer().substr(0, pos);
 					_clients[i]->eraseBuffer(0, pos + 2);
-					std::cout << "Line: " << line << std::endl;
+					Message msg = Message::parse(line);
+					std::cout << "Command : " << msg.command << std::endl;
+					for(size_t j = 0; j < msg.param.size(); j++)
+					{
+						std::cout << msg.param[j] << std::endl;
+					}
 				}
 			}
 		}
