@@ -25,9 +25,9 @@ class Client
 		std::string getUsrName() const { return _userName; }
 
 		void setPass(bool pass) { _pass = pass; }
-		void setRegistred(bool registred) { _registred = registred };
-		void setNickName(std::string nickName) { _nickName = nickName};
-		void setUserName(std::string userName) { _userName = userName};
+		void setRegistred(bool registred) { _registred = registred; }
+		void setNickName(std::string nickName) { _nickName = nickName; }
+		void setUserName(std::string userName) { _userName = userName; }
 
 
     private:
