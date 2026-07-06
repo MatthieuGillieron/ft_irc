@@ -59,7 +59,8 @@ int main(int ac, char **av)
 ## Coéquipier 2 — Logique IRC & protocole
 
 ### Phase 3 — Enregistrement
-- `PASS` → vérification mot de passe (erreur 464)
+ - fonction d'envoie ()
+- `PASS` → vérification mot de passe (erreur 464) // fait
 - `NICK` → unicité (433), validité (432)
 - `USER` → username + realname
 - Message de bienvenue `001` quand les 3 sont OK
