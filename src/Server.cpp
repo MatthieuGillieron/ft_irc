@@ -1,5 +1,6 @@
 
 #include "../header/Server.hpp"
+#include "../header/Message.hpp"
 
 void Server::run()
 {
@@ -24,7 +25,7 @@ void Server::run()
 					acceptClient();
 				}
 				else
-				{		
+				{
 					handleClient(_pollfds[i].fd);
 				}
 			}
@@ -71,12 +72,30 @@ void Server::handleClient(int fd)
 	}
 	else if(bytesReceived > 0)
 	{
-		recvBuffer[bytesReceived] = '\0';
-		std::cout << "Data received: " << recvBuffer << std::endl;
+		for(size_t i = 0; i < _clients.size(); i++)
+		{
+			if(_clients[i]->getFd() == fd)
+			{
+				recvBuffer[bytesReceived] = '\0';
+				_clients[i]->appendToBuffer(recvBuffer);
+				while(_clients[i]->getInBuffer().find("\r\n") != std::string::npos)
+				{
+					size_t pos = _clients[i]->getInBuffer().find("\r\n");
+					std::string line = _clients[i]->getInBuffer().substr(0, pos);
+					_clients[i]->eraseBuffer(0, pos + 2);
+					Message msg = Message::parse(line);
+					std::cout << "Command : " << msg.command << std::endl;
+					for(size_t j = 0; j < msg.param.size(); j++)
+					{
+						std::cout << msg.param[j] << std::endl;
+					}
+				}
+			}
+		}
 	}
 }
 
-void Server::disconnectClient(int fd) 
+void Server::disconnectClient(int fd)
 {
 	close(fd);
 	for(size_t i = 0; i < _pollfds.size(); i++)
@@ -130,3 +149,40 @@ void Server::setupSocket()
 	}
 	fcntl(_listenFd, F_SETFL, O_NONBLOCK);
 }
+
+
+
+void Server::handlePass(Client& client, const Message& msg)
+{
+
+	if (msg.param.empty())
+	{
+		reply(client, "461: Empty parameter");
+		return;
+	}
+
+	if (client.getPass())
+	{
+		reply(client, "462: Already connected");
+		return;
+	}
+
+	if (msg.param[0] == _password)
+		client.setPass(true);
+	else
+		reply(client, "464: Password incorrect");
+
+}
+
+void Server::reply(Client &client, const std::string &msg)
+{
+
+	// revoir les retours protocole IRC
+	std::string complete = msg + "\r\n";
+
+	//changer avec pollout
+	send(client.getFd(), complete.c_str(), complete.size(), 0);
+
+}
+
+
