@@ -11,6 +11,7 @@ struct Message
 
 	std::string command;
 	std::vector<std::string> param;
+	static Message parse(std::string line);
 
 
 };

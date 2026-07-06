@@ -1,5 +1,6 @@
 
 #include "../header/Server.hpp"
+#include "../header/Message.hpp"
 
 void Server::run()
 {
@@ -71,8 +72,26 @@ void Server::handleClient(int fd)
 	}
 	else if(bytesReceived > 0)
 	{
-		recvBuffer[bytesReceived] = '\0';
-		std::cout << "Data received: " << recvBuffer << std::endl;
+		for(size_t i = 0; i < _clients.size(); i++)
+		{
+			if(_clients[i]->getFd() == fd)
+			{
+				recvBuffer[bytesReceived] = '\0';
+				_clients[i]->appendToBuffer(recvBuffer);
+				while(_clients[i]->getInBuffer().find("\r\n") != std::string::npos)
+				{
+					size_t pos = _clients[i]->getInBuffer().find("\r\n");
+					std::string line = _clients[i]->getInBuffer().substr(0, pos);
+					_clients[i]->eraseBuffer(0, pos + 2);
+					Message msg = Message::parse(line);
+					std::cout << "Command : " << msg.command << std::endl;
+					for(size_t j = 0; j < msg.param.size(); j++)
+					{
+						std::cout << msg.param[j] << std::endl;
+					}
+				}
+			}
+		}
 	}
 }
 
