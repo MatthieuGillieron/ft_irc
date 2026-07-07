@@ -16,6 +16,43 @@ void Server::reply(Client &client, const std::string &msg)
 
 
 
+bool specialChar(char c)
+{
+
+std::string allowed = "[]\\_^{}|`";
+
+	for (size_t i = 0; i < allowed.length(); i++)
+	{
+		if (allowed[i] == c)
+			return true;
+	}
+	return false;
+}
+
+
+bool isValidNick(const std::string &nickName)
+{
+
+	if (nickName.empty())
+		return false;
+
+
+	char first = nickName[0];
+
+
+	if (!isalpha(first) && !specialChar(first))
+		return false;
+
+
+	for (size_t i = 0; i < nickName.length(); i++)
+	{
+		if (!isdigit(nickName[i]) && !isalpha(nickName[i]) && !specialChar(nickName[i]) && nickName[i] != '-')
+			return false;
+	}
+	return true;
+
+}
+
 
 
 void Server::handlePass(Client& client, const Message& msg)
@@ -53,7 +90,23 @@ void Server::handleNick(Client &client, const Message &msg)
 		return;
 	}
 
-	if ()
+	std::string nickName = msg.param[0];
 
+	if (!isValidNick(nickName))
+	{
+		reply(client, "432" + nickName + " ::Erroneous nickname");
+		return;
+	}
+
+
+	for (size_t i = 0; i < _clients.size(); i++)
+	{
+		if (_clients[i]->getNickName() == nickName && _clients[i] != &client)
+		{
+			reply(client, "443" + nickName + " :Nickname is already in use");
+			return;
+		}
+	}
 
 }
+
