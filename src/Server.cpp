@@ -84,15 +84,24 @@ void Server::handleClient(int fd)
 					std::string line = _clients[i]->getInBuffer().substr(0, pos);
 					_clients[i]->eraseBuffer(0, pos + 2);
 					Message msg = Message::parse(line);
-					std::cout << "Command : " << msg.command << std::endl;
-					for(size_t j = 0; j < msg.param.size(); j++)
-					{
-						std::cout << msg.param[j] << std::endl;
-					}
+					dispatcher(_clients[i], msg);
 				}
 			}
 		}
 	}
+}
+
+void Server::dispatcher(Client* client, Message msg)
+{
+	if(msg.command == "PASS")
+	{
+		handlePass(*client, msg);
+	}
+	else if(msg.command == "NICK")
+		handleNick(*client, msg);
+	else if(msg.command == "USER")
+		handleUser(*client, msg);
+	
 }
 
 void Server::disconnectClient(int fd)
@@ -149,40 +158,4 @@ void Server::setupSocket()
 	}
 	fcntl(_listenFd, F_SETFL, O_NONBLOCK);
 }
-
-
-
-void Server::handlePass(Client& client, const Message& msg)
-{
-
-	if (msg.param.empty())
-	{
-		reply(client, "461: Empty parameter");
-		return;
-	}
-
-	if (client.getPass())
-	{
-		reply(client, "462: Already connected");
-		return;
-	}
-
-	if (msg.param[0] == _password)
-		client.setPass(true);
-	else
-		reply(client, "464: Password incorrect");
-
-}
-
-void Server::reply(Client &client, const std::string &msg)
-{
-
-	// revoir les retours protocole IRC
-	std::string complete = msg + "\r\n";
-
-	//changer avec pollout
-	send(client.getFd(), complete.c_str(), complete.size(), 0);
-
-}
-
 

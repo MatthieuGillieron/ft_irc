@@ -41,11 +41,17 @@ class Server
 
 	void setupSocket(); // socket ecoute
 	void acceptClient();
+
 	void handleClient(int fd);
 	void handlePass(Client& client, const Message& msg);
+	void handleNick(Client &client, const Message &msg);
+	void handleUser(Client& client, const Message& msg);
+
 	void disconnectClient(int fd);
 
 	void reply(Client &client, const std::string &msg);
+
+	void dispatcher(Client* client, Message msg);
 
     private:
 		unsigned int _port;
