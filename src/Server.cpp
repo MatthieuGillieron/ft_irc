@@ -2,6 +2,18 @@
 #include "../header/Server.hpp"
 #include "../header/Message.hpp"
 
+Server::~Server()
+{
+	std::string msg_error = "ERROR : Server shutting down\r\n";
+	for(size_t i = 0; i < _clients.size(); i++)
+	{
+		send(_clients[i]->getFd(), msg_error.c_str(), msg_error.size(), 0);
+		close(_clients[i]->getFd());
+		delete(_clients[i]);
+	}
+	close(_listenFd);
+}
+
 void Server::run()
 {
 	Server::setupSocket();
@@ -13,7 +25,7 @@ void Server::run()
 
 	_pollfds.push_back(pfd);
 
-    while(true)
+    while(!g_shutdown)
     {
 		poll(&_pollfds[0], _pollfds.size(), -1);
 		for (size_t i = 0; i < _pollfds.size(); i++)
@@ -31,6 +43,7 @@ void Server::run()
 			}
 		}
     }
+	std::cout << "Server shutting down..." << std::endl;
 }
 
 void Server::acceptClient()

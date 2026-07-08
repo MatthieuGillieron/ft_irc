@@ -4,7 +4,13 @@
 #include <iostream>
 #include <cstdlib>
 
+sig_atomic_t g_shutdown = 0;
 
+void signalHandler(int signal)
+{
+	(void)signal;
+	g_shutdown = 1;
+}
 
 int main(int ac, char **av)
 {
@@ -31,6 +37,9 @@ int main(int ac, char **av)
 
 	std::cout << " Running ..." << std::endl;
 
+	signal(SIGINT, signalHandler);
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGQUIT, signalHandler);
 	Server server(port, password);
 	server.run();
 

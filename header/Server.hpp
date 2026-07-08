@@ -22,16 +22,13 @@
 
 #include "Message.hpp"
 
-
-
-
-
+extern sig_atomic_t g_shutdown;
 
 class Server
 {
     public:
     Server(unsigned int port, std::string password) : _port(port), _password(password) {};
-    ~Server() {};
+    ~Server();
 
 	std::string getPassword() const;
 	std::string getPort() const;
