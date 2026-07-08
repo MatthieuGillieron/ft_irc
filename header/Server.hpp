@@ -45,6 +45,7 @@ class Server
 	void handleClient(int fd);
 	void handlePass(Client& client, const Message& msg);
 	void handleNick(Client &client, const Message &msg);
+	void handleUser(Client& client, const Message& msg);
 
 	void disconnectClient(int fd);
 

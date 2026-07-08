@@ -1,6 +1,6 @@
 
 #include "../../header/Server.hpp"
-
+#include <cctype>
 
 
 void Server::reply(Client &client, const std::string &msg)
@@ -94,7 +94,7 @@ void Server::handleNick(Client &client, const Message &msg)
 
 	if (!isValidNick(nickName))
 	{
-		reply(client, "432" + nickName + " ::Erroneous nickname");
+		reply(client, "432 " + nickName + " :Erroneous nickname");
 		return;
 	}
 
@@ -103,10 +103,32 @@ void Server::handleNick(Client &client, const Message &msg)
 	{
 		if (_clients[i]->getNickName() == nickName && _clients[i] != &client)
 		{
-			reply(client, "443" + nickName + " :Nickname is already in use");
+			reply(client, "433 " + nickName + " :Nickname is already in use");
 			return;
 		}
 	}
 
+	client.setNickName(nickName);
 }
+
+
+
+void Server::handleUser(Client& client, const Message& msg)
+{
+	if (client.getRegistred())
+	{
+		reply(client, "462 :Already registred");
+		return;
+	}
+
+	if (msg.param.size() < 4)
+	{
+		reply(client, "461 USER :Not enough parameters");
+		return;
+	}
+
+	client.setUserName(msg.param[0]);
+}
+
+
 
