@@ -50,6 +50,8 @@ class Server
 	void disconnectClient(int fd);
 
 	void reply(Client &client, const std::string &msg);
+	void checkRegister(Client &client);
+
 
     private:
 		unsigned int _port;

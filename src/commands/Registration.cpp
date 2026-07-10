@@ -3,6 +3,10 @@
 #include <cctype>
 
 
+
+// === REPLY - WELCOME ===
+
+
 void Server::reply(Client &client, const std::string &msg)
 {
 
@@ -14,7 +18,28 @@ void Server::reply(Client &client, const std::string &msg)
 
 }
 
+void Server::checkRegister(Client &client)
+{
+	if (!client.getPass() || client.getNickName().empty() || client.getUsrName().empty())
+		return;
 
+	if (client.getRegistred())
+		return;
+
+	client.setRegistred(true);
+
+	// message wlecome
+
+	std::string nickname = client.getNickName();
+	reply(client, ":ircserv 001" + nickname + " :Welcome to IRC network " + nickname);
+	reply(client, ":ircserv 002" + nickname + " :You'r host is ircserv, version 1.0 ");
+	reply(client, ":ircserv 003" + nickname + " :This server has been created recently");
+	reply(client, ":ircserv 004" + nickname + " :ircserv 1.0 o o");
+
+}
+
+
+// === UTILS ===
 
 bool specialChar(char c)
 {
@@ -55,6 +80,8 @@ bool isValidNick(const std::string &nickName)
 
 
 
+// === HANDLER  PASS - Nickname - User ===
+
 void Server::handlePass(Client& client, const Message& msg)
 {
 
@@ -75,6 +102,7 @@ void Server::handlePass(Client& client, const Message& msg)
 	else
 		reply(client, "464: Password incorrect");
 
+	checkRegister(client);
 }
 
 
@@ -109,6 +137,8 @@ void Server::handleNick(Client &client, const Message &msg)
 	}
 
 	client.setNickName(nickName);
+
+	checkRegister(client);
 }
 
 
@@ -128,6 +158,8 @@ void Server::handleUser(Client& client, const Message& msg)
 	}
 
 	client.setUserName(msg.param[0]);
+
+	checkRegister(client);
 }
 
 
