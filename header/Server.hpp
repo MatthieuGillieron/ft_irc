@@ -47,8 +47,13 @@ class Server
 	void disconnectClient(int fd);
 
 	void reply(Client &client, const std::string &msg);
+	void checkRegister(Client &client);
+
 
 	void dispatcher(Client* client, Message msg);
+
+	void flushClient(int fd);
+	Client* findClient(int fd);
 
     private:
 		unsigned int _port;
@@ -56,7 +61,7 @@ class Server
 		int _listenFd;
 		std::vector<struct pollfd> _pollfds;
 		std::vector<Client*> _clients;
-
+		std::vector<int> _toDisconnect;
 
 };
 

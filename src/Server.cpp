@@ -27,10 +27,34 @@ void Server::run()
 
     while(!g_shutdown)
     {
-		poll(&_pollfds[0], _pollfds.size(), -1);
+		for(size_t y = 0; y < _pollfds.size(); y++)
+		{
+			if(_pollfds[y].fd == _listenFd)
+				continue;
+			Client* client = findClient(_pollfds[y].fd);
+			if (client == NULL) 
+				continue;
+			if(client->getOutBuffer().empty())
+				_pollfds[y].events = POLLIN;
+			else
+			_pollfds[y].events = POLLIN | POLLOUT;
+		}
+		int ret = poll(&_pollfds[0], _pollfds.size(), -1);
+		if (ret < 0)
+		{
+    		if (errno == EINTR) continue;
+    			std::cerr << "poll() error: " << strerror(errno) << std::endl;
+    		break;
+		}
 		for (size_t i = 0; i < _pollfds.size(); i++)
 		{
-			if (_pollfds[i].revents == POLLIN)
+			if (_pollfds[i].revents & (POLLHUP | POLLERR | POLLNVAL))
+			{
+    			if (_pollfds[i].fd != _listenFd)
+        			_toDisconnect.push_back(_pollfds[i].fd);
+    			continue;
+			}
+			if (_pollfds[i].revents & POLLIN)
 			{
 				if(_pollfds[i].fd == _listenFd)
 				{
@@ -41,7 +65,14 @@ void Server::run()
 					handleClient(_pollfds[i].fd);
 				}
 			}
+			if (_pollfds[i].revents & POLLOUT)
+			{
+    		flushClient(_pollfds[i].fd);
+			}
 		}
+		for (size_t k = 0; k < _toDisconnect.size(); k++)
+    		disconnectClient(_toDisconnect[k]);
+		_toDisconnect.clear();
     }
 	std::cout << "Server shutting down..." << std::endl;
 }
@@ -75,31 +106,31 @@ void Server::handleClient(int fd)
 	int bytesReceived = recv(fd, recvBuffer,sizeof(recvBuffer), 0);
 	if(bytesReceived < 0)
 	{
+		if(errno == EAGAIN)
+			return;
 		std::cerr << "recv() error:" << strerror(errno) << std::endl;
+		_toDisconnect.push_back(fd);
 		return;
 	}
 	else if(bytesReceived == 0)
 	{
-		disconnectClient(fd);
+		_toDisconnect.push_back(fd);
 		std::cout << "Client disconnected" << std::endl;
 	}
 	else if(bytesReceived > 0)
 	{
-		for(size_t i = 0; i < _clients.size(); i++)
+		Client* client = findClient(fd);
+		if (client == NULL)
+			return;
+		recvBuffer[bytesReceived] = '\0';
+		client->appendToBuffer(recvBuffer);
+		while(client->getInBuffer().find("\r\n") != std::string::npos)
 		{
-			if(_clients[i]->getFd() == fd)
-			{
-				recvBuffer[bytesReceived] = '\0';
-				_clients[i]->appendToBuffer(recvBuffer);
-				while(_clients[i]->getInBuffer().find("\r\n") != std::string::npos)
-				{
-					size_t pos = _clients[i]->getInBuffer().find("\r\n");
-					std::string line = _clients[i]->getInBuffer().substr(0, pos);
-					_clients[i]->eraseBuffer(0, pos + 2);
-					Message msg = Message::parse(line);
-					dispatcher(_clients[i], msg);
-				}
-			}
+			size_t pos = client->getInBuffer().find("\r\n");
+			std::string line = client->getInBuffer().substr(0, pos);
+			client->eraseBuffer(0, pos + 2);
+			Message msg = Message::parse(line);
+			dispatcher(client, msg);
 		}
 	}
 }
@@ -172,3 +203,31 @@ void Server::setupSocket()
 	fcntl(_listenFd, F_SETFL, O_NONBLOCK);
 }
 
+void Server::flushClient(int fd)
+{
+	Client* client = findClient(fd);
+	if (client == NULL) return;
+	std::string out = client->getOutBuffer();
+	int bytesSent = send(fd, out.c_str(), out.size(), 0);
+	if(bytesSent < 0)
+	{
+		std::cerr << "Error: " << std::endl;
+		return;
+	}
+	if(bytesSent > 0)
+	{
+		client->eraseOutBuffer(0, bytesSent);
+	}
+}
+
+Client* Server::findClient(int fd)
+{
+	for(size_t i = 0; i < _clients.size(); i++)
+	{
+		if(_clients[i]->getFd() == fd)
+		{
+			return _clients[i];
+		}
+	}
+	return NULL;
+}
