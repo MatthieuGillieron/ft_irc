@@ -43,6 +43,7 @@ class Server
 	void handlePass(Client& client, const Message& msg);
 	void handleNick(Client &client, const Message &msg);
 	void handleUser(Client& client, const Message& msg);
+	void handlePing(Client& client, const Message& msg);
 
 	void disconnectClient(int fd);
 

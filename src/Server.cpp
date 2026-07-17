@@ -32,7 +32,7 @@ void Server::run()
 			if(_pollfds[y].fd == _listenFd)
 				continue;
 			Client* client = findClient(_pollfds[y].fd);
-			if (client == NULL) 
+			if (client == NULL)
 				continue;
 			if(client->getOutBuffer().empty())
 				_pollfds[y].events = POLLIN;
@@ -145,7 +145,9 @@ void Server::dispatcher(Client* client, Message msg)
 		handleNick(*client, msg);
 	else if(msg.command == "USER")
 		handleUser(*client, msg);
-	
+	else if (msg.command == "PING")
+		handlePing(*client, msg);
+
 }
 
 void Server::disconnectClient(int fd)
