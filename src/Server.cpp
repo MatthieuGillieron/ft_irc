@@ -11,7 +11,17 @@ Server::~Server()
 		close(_clients[i]->getFd());
 		delete(_clients[i]);
 	}
+	for(std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+		delete it->second;
 	close(_listenFd);
+}
+
+Channel* Server::findChannel(const std::string& name)
+{
+	std::map<std::string, Channel*>::iterator it = _channels.find(name);
+	if (it == _channels.end())
+		return NULL;
+	return it->second;
 }
 
 void Server::run()
@@ -147,6 +157,8 @@ void Server::dispatcher(Client* client, Message msg)
 		handleUser(*client, msg);
 	else if (msg.command == "PING")
 		handlePing(*client, msg);
+	else if (msg.command == "JOIN")
+		handleJoin(*client, msg);
 
 }
 

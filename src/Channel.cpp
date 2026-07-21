@@ -83,7 +83,7 @@ bool Channel::isModo(Client *client) const
 
 
 
-// === INVITES (par nickname) ===
+// === INVITES ===
 
 void Channel::addInvite(const std::string &nick)
 {
