@@ -46,6 +46,8 @@ class Server
 	void handleUser(Client& client, const Message& msg);
 	void handlePing(Client& client, const Message& msg);
 	void handleJoin(Client& client, const Message& msg);
+	bool checkJoin(Client& client, Channel* chan, const std::string& key);
+	void joinReplies(Client& client, Channel* chan);
 
 	void disconnectClient(int fd);
 

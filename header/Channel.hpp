@@ -23,6 +23,7 @@ class Channel
 		bool hasKey() const { return _hasKey; }
 		bool hasLimit() const { return _hasLimit; }
 
+
 		// === SETTERS / MODES ===
 		void setTopic(const std::string &topic) { _topic = topic; }
 
@@ -33,6 +34,7 @@ class Channel
 		void setLimit(size_t limit) { _limit = limit; _hasLimit = true; }
 		void removeLimit() { _limit = 0; _hasLimit = false; }
 
+
 		// === MEMBERS ===
 		void addMember(Client *client);
 		void removeMember(Client *client);
@@ -41,21 +43,24 @@ class Channel
 		const std::vector<Client*> &getMembers() const { return _members; }
 		bool isEmpty() const { return _members.empty(); }
 
-		// === MODOS (operateurs de channel) ===
+
+		// === MODOS ===
 		void addModo(Client *client);
 		void removeModo(Client *client);
 		bool isModo(Client *client) const;
+
 
 		// === INVITES (par nickname) ===
 		void addInvite(const std::string &nick);
 		void removeInvite(const std::string &nick);
 		bool isInvited(const std::string &nick) const;
 
+
 		// === UTILS ===
-		// Envoie msg (+ "\r\n") a tous les membres, sauf 'except' si fourni.
 		void broadcast(const std::string &msg, Client *except = NULL);
-		// Liste des noms pour le RPL_NAMREPLY (353), ops prefixes de '@'.
 		std::string getNamesList() const;
+
+
 
 	private:
 		std::string _name;
