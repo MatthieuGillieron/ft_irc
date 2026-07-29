@@ -1,8 +1,4 @@
-
 #include "../header/Server.hpp"
-
-#include <iostream>
-#include <cstdlib>
 
 sig_atomic_t g_shutdown = 0;
 

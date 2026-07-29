@@ -4,8 +4,9 @@ CC = c++
 CFLAGS = -Wall -Wextra -Werror -std=c++98
 
 
-SRCS =	src/main.cpp src/Server.cpp src/Message.cpp \
-		src/commands/Registration.cpp src/commands/Ping.cpp
+SRCS =	src/main.cpp src/Server.cpp src/Client.cpp src/Channel.cpp src/Message.cpp \
+		src/ServerClient.cpp src/ServerDispatch.cpp 								\
+		src/commands/Registration.cpp src/commands/Ping.cpp src/commands/Join.cpp
 
 
 
