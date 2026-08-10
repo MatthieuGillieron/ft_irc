@@ -43,6 +43,10 @@ void Server::dispatcher(Client* client, Message msg)
 
 	if (msg.command == "JOIN")
 		handleJoin(*client, msg);
+	else if (msg.command == "PRIVMSG")
+		handlePrivmsg(*client, msg);
+	else if (msg.command == "NOTICE")
+		handleNotice(*client, msg);
 	else
 		sendNumeric(*client, 421, msg.command, "Unknown command");
 }

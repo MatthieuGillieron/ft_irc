@@ -56,6 +56,11 @@ class Server
 	bool checkJoin(Client& client, Channel* chan, const std::string& key);
 	void joinReplies(Client& client, Channel* chan);
 
+	void handlePrivmsg(Client& client, const Message& msg);
+	void handleNotice(Client& client, const Message& msg);
+	// coeur commun de PRIVMSG et NOTICE : NOTICE n'emet jamais d'erreur
+	void sendMessage(Client& client, const Message& msg, const std::string& cmd, bool silent);
+
 	void disconnectClient(int fd);
 	void markDisconnect(int fd); // met un fd en file de deconnexion, sans doublon
 
