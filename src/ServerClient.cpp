@@ -100,20 +100,13 @@ void Server::disconnectClient(int fd)
 	// et le prochain broadcast ecrit dedans
 	if (client != NULL)
 	{
+		// une deconnexion brutale doit prevenir les salons, comme un QUIT
+		if (!client->getNickName().empty() && client->getRegistred())
+			broadcastToPeers(*client, ":" + buildPrefix(*client) + " QUIT :Connection reset by peer", false);
+
 		std::vector<Channel*> chans = getChannelsOf(client);
 		for (size_t i = 0; i < chans.size(); i++)
-		{
-			chans[i]->removeMember(client); // retire aussi le statut d'operateur
-			chans[i]->removeInvite(client->getNickName());
-
-			// un salon vide ne doit pas survivre : il garderait ses modes,
-			// sa cle et sa liste d'invites pour le prochain qui le recree
-			if (chans[i]->isEmpty())
-			{
-				_channels.erase(chans[i]->getName());
-				delete chans[i];
-			}
-		}
+			leaveChannel(*client, chans[i]);
 	}
 
 	close(fd);

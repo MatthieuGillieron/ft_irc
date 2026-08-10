@@ -35,6 +35,13 @@ void Server::dispatcher(Client* client, Message msg)
 		return;
 	}
 
+	// et il doit toujours pouvoir partir
+	if (msg.command == "QUIT")
+	{
+		handleQuit(*client, msg);
+		return;
+	}
+
 	if (!client->getRegistred())
 	{
 		sendNumeric(*client, 451, "You have not registered");
@@ -47,6 +54,8 @@ void Server::dispatcher(Client* client, Message msg)
 		handlePrivmsg(*client, msg);
 	else if (msg.command == "NOTICE")
 		handleNotice(*client, msg);
+	else if (msg.command == "PART")
+		handlePart(*client, msg);
 	else
 		sendNumeric(*client, 421, msg.command, "Unknown command");
 }

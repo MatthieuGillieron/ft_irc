@@ -61,6 +61,14 @@ class Server
 	// coeur commun de PRIVMSG et NOTICE : NOTICE n'emet jamais d'erreur
 	void sendMessage(Client& client, const Message& msg, const std::string& cmd, bool silent);
 
+	void handlePart(Client& client, const Message& msg);
+	void handleQuit(Client& client, const Message& msg);
+
+	// envoie a tous ceux qui partagent un salon avec ce client, une seule fois chacun
+	void broadcastToPeers(Client& client, const std::string& msg, bool includeSelf);
+	// retire le client d'un salon et detruit celui-ci s'il devient vide
+	void leaveChannel(Client& client, Channel* chan);
+
 	void disconnectClient(int fd);
 	void markDisconnect(int fd); // met un fd en file de deconnexion, sans doublon
 
