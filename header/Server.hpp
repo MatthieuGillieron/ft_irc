@@ -33,6 +33,9 @@ std::string buildPrefix(const Client &client);
 // comparaison de pseudos / de noms de salon : IRC est insensible a la casse
 bool ircEqual(const std::string &a, const std::string &b);
 
+// "#a,#b,#c" -> ["#a", "#b", "#c"] : listes de cibles de JOIN, PART et PRIVMSG
+std::vector<std::string> splitList(const std::string &line, char sep);
+
 class Server
 {
     public:

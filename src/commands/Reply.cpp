@@ -23,6 +23,26 @@ std::string buildPrefix(const Client &client)
 }
 
 
+std::vector<std::string> splitList(const std::string &line, char sep)
+{
+	std::vector<std::string> out;
+	size_t start = 0;
+
+	while (true)
+	{
+		size_t pos = line.find(sep, start);
+		if (pos == std::string::npos)
+		{
+			out.push_back(line.substr(start));
+			break;
+		}
+		out.push_back(line.substr(start, pos - start));
+		start = pos + 1;
+	}
+	return out;
+}
+
+
 bool ircEqual(const std::string &a, const std::string &b)
 {
 	if (a.size() != b.size())

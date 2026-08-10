@@ -50,12 +50,16 @@ void Server::dispatcher(Client* client, Message msg)
 
 // === RECHERCHE ===
 
+// recherche insensible a la casse : "#Test" et "#test" sont le meme salon.
+// C'est aussi ce qui empeche JOIN d'en creer deux variantes.
 Channel* Server::findChannel(const std::string& name)
 {
-	std::map<std::string, Channel*>::iterator it = _channels.find(name);
-	if (it == _channels.end())
-		return NULL;
-	return it->second;
+	for (std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+	{
+		if (ircEqual(it->first, name))
+			return it->second;
+	}
+	return NULL;
 }
 
 
