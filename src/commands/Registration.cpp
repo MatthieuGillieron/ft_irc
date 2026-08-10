@@ -43,7 +43,7 @@ std::string allowed = "[]\\_^{}|`";
 bool isValidNick(const std::string &nickName)
 {
 
-	if (nickName.empty())
+	if (nickName.empty() || nickName.length() > 9) // limite du RFC 1459
 		return false;
 
 
@@ -127,6 +127,32 @@ void Server::handleNick(Client &client, const Message &msg)
 	if (other != NULL && other != &client)
 	{
 		sendNumeric(client, 433, nickName, "Nickname is already in use");
+		return;
+	}
+
+	std::string oldNick = client.getNickName();
+	if (oldNick == nickName) // rien a changer, meme casse
+		return;
+
+	// changement en cours de session : tout le monde doit etre prevenu
+	if (client.getRegistred())
+	{
+		// le message annonce QUI change, donc il porte l'ancien prefixe
+		std::string line = ":" + buildPrefix(client) + " NICK :" + nickName;
+
+		// une invitation en attente est nominative : elle suit le nouveau pseudo
+		std::vector<Channel*> chans = getChannelsOf(&client);
+		for (size_t i = 0; i < chans.size(); i++)
+		{
+			if (chans[i]->isInvited(oldNick))
+			{
+				chans[i]->removeInvite(oldNick);
+				chans[i]->addInvite(nickName);
+			}
+		}
+
+		client.setNickName(nickName);
+		broadcastToPeers(client, line, true);
 		return;
 	}
 
