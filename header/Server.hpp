@@ -69,6 +69,15 @@ class Server
 	// retire le client d'un salon et detruit celui-ci s'il devient vide
 	void leaveChannel(Client& client, Channel* chan);
 
+	void handleTopic(Client& client, const Message& msg);
+	void handleKick(Client& client, const Message& msg);
+	void handleInvite(Client& client, const Message& msg);
+
+	void handleMode(Client& client, const Message& msg);
+	void applyModes(Client& client, Channel* chan, const Message& msg);
+	// applique un seul flag ; renvoie false si le changement n'a pas eu lieu
+	bool applyOneMode(Client& client, Channel* chan, char mode, bool adding, std::string& arg);
+
 	void disconnectClient(int fd);
 	void markDisconnect(int fd); // met un fd en file de deconnexion, sans doublon
 

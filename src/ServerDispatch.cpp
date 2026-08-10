@@ -34,7 +34,6 @@ void Server::dispatcher(Client* client, Message msg)
 		handlePing(*client, msg);
 		return;
 	}
-
 	// et il doit toujours pouvoir partir
 	if (msg.command == "QUIT")
 	{
@@ -56,6 +55,14 @@ void Server::dispatcher(Client* client, Message msg)
 		handleNotice(*client, msg);
 	else if (msg.command == "PART")
 		handlePart(*client, msg);
+	else if (msg.command == "TOPIC")
+		handleTopic(*client, msg);
+	else if (msg.command == "KICK")
+		handleKick(*client, msg);
+	else if (msg.command == "INVITE")
+		handleInvite(*client, msg);
+	else if (msg.command == "MODE")
+		handleMode(*client, msg);
 	else
 		sendNumeric(*client, 421, msg.command, "Unknown command");
 }
