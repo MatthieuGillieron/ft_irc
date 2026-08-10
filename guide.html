@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ft_irc — Guide d'apprentissage</title>
+<style>
+  :root{
+    --bg:#0f1419; --bg-side:#151b23; --bg-card:#1a222c; --bg-code:#0b0f14;
+    --border:#26303c; --text:#d6dde6; --muted:#8a97a6; --head:#f2f5f8;
+    --accent:#5aa9ff; --accent-soft:#1e3a5f; --green:#4ec9a3; --yellow:#e6c86e;
+    --red:#e06c75; --purple:#c98bdb;
+    --mono:'SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6;font-size:15px}
+
+  /* Layout */
+  .wrap{display:flex;min-height:100vh}
+  aside{width:270px;flex-shrink:0;background:var(--bg-side);border-right:1px solid var(--border);
+        position:sticky;top:0;height:100vh;overflow-y:auto;padding:22px 0}
+  main{flex:1;max-width:900px;margin:0 auto;padding:42px 48px 90px}
+
+  /* Sidebar */
+  .brand{padding:0 22px 18px;border-bottom:1px solid var(--border);margin-bottom:14px}
+  .brand h1{font-size:19px;color:var(--head);letter-spacing:.5px}
+  .brand span{color:var(--accent);font-family:var(--mono)}
+  .brand p{font-size:12px;color:var(--muted);margin-top:3px}
+  .nav-group{padding:12px 22px 4px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600}
+  nav a{display:block;padding:7px 22px;color:var(--text);text-decoration:none;font-size:13.5px;border-left:2px solid transparent;transition:.15s}
+  nav a:hover{background:var(--bg-card);color:var(--head)}
+  nav a.active{border-left-color:var(--accent);background:var(--accent-soft);color:#fff;font-weight:500}
+
+  /* Content sections */
+  section{display:none;animation:fade .25s ease}
+  section.visible{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  h2{font-size:26px;color:var(--head);margin-bottom:6px;letter-spacing:.3px}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:26px}
+  h3{font-size:18px;color:var(--head);margin:30px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+  h4{font-size:15px;color:var(--accent);margin:20px 0 8px;font-family:var(--mono)}
+  p{margin-bottom:12px}
+  ul,ol{margin:0 0 14px 22px}
+  li{margin-bottom:6px}
+  strong{color:var(--head)}
+  code{font-family:var(--mono);background:var(--bg-code);padding:2px 6px;border-radius:4px;font-size:.86em;color:var(--green);border:1px solid var(--border)}
+
+  pre{background:var(--bg-code);border:1px solid var(--border);border-radius:8px;padding:16px 18px;overflow-x:auto;margin:0 0 16px;font-size:13px;line-height:1.55}
+  pre code{background:none;border:none;padding:0;color:var(--text)}
+  .cmt{color:var(--muted)}
+  .kw{color:var(--purple)}
+  .str{color:var(--yellow)}
+  .fn{color:var(--accent)}
+
+  table{width:100%;border-collapse:collapse;margin:0 0 18px;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border:1px solid var(--border);vertical-align:top}
+  th{background:var(--bg-card);color:var(--head);font-weight:600}
+  td code{font-size:.85em}
+
+  .card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:16px}
+  .card h4{margin-top:0}
+
+  .callout{border-radius:8px;padding:13px 16px;margin:0 0 16px;border-left:3px solid;font-size:13.8px}
+  .callout.info{background:rgba(90,169,255,.08);border-color:var(--accent)}
+  .callout.warn{background:rgba(230,200,110,.08);border-color:var(--yellow)}
+  .callout.ok{background:rgba(78,201,163,.08);border-color:var(--green)}
+  .callout b{color:var(--head)}
+
+  .pill{display:inline-block;font-size:11px;font-family:var(--mono);padding:2px 8px;border-radius:20px;border:1px solid var(--border)}
+  .pill.done{color:var(--green);border-color:var(--green)}
+  .pill.todo{color:var(--yellow);border-color:var(--yellow)}
+  .pill.no{color:var(--red);border-color:var(--red)}
+
+  /* Q&A */
+  details{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+  summary{padding:13px 18px;cursor:pointer;font-weight:500;color:var(--head);list-style:none;font-size:14.5px}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▶";color:var(--accent);font-size:10px;margin-right:10px;display:inline-block;transition:.2s}
+  details[open] summary::before{transform:rotate(90deg)}
+  details .body{padding:0 18px 16px 40px;color:var(--text);font-size:13.8px}
+
+  .progress-bar{height:26px;background:var(--bg-code);border-radius:14px;overflow:hidden;border:1px solid var(--border);margin:6px 0 20px}
+  .progress-fill{height:100%;width:55%;background:linear-gradient(90deg,var(--accent),var(--green));display:flex;align-items:center;justify-content:flex-end;padding-right:14px;color:#04121f;font-weight:700;font-size:12px}
+
+  .flow{font-family:var(--mono);font-size:12.5px;line-height:2;color:var(--text)}
+  .flow .arrow{color:var(--accent)}
+
+  .menu-btn{display:none}
+  @media(max-width:820px){
+    aside{position:fixed;left:-280px;z-index:20;transition:.25s;box-shadow:0 0 40px rgba(0,0,0,.5)}
+    aside.open{left:0}
+    main{padding:70px 22px 60px}
+    .menu-btn{display:flex;position:fixed;top:14px;left:14px;z-index:30;background:var(--accent);color:#04121f;
+      border:none;border-radius:8px;width:42px;height:42px;font-size:20px;align-items:center;justify-content:center;cursor:pointer}
+  }
+</style>
+</head>
+<body>
+<button class="menu-btn" onclick="document.querySelector('aside').classList.toggle('open')">☰</button>
+<div class="wrap">
+  <aside>
+    <div class="brand">
+      <h1><span>ft_</span>irc</h1>
+      <p>Guide d'apprentissage · coéquipier 2</p>
+    </div>
+    <div class="nav-group">Comprendre</div>
+    <nav id="nav">
+      <a href="#overview" class="active">Le projet en bref</a>
+      <a href="#archi">Architecture &amp; flux</a>
+      <a href="#keys">Points clés à maîtriser</a>
+    </nav>
+    <div class="nav-group">Le code</div>
+    <nav>
+      <a href="#files">Rôle de chaque fichier</a>
+      <a href="#recent">Dernières modifs</a>
+    </nav>
+    <div class="nav-group">Réviser</div>
+    <nav>
+      <a href="#qa">Questions / Réponses</a>
+      <a href="#progress">Avancement &amp; suite</a>
+    </nav>
+  </aside>
+
+  <main>
+    <!-- ============ OVERVIEW ============ -->
+    <section id="overview" class="visible">
+      <h2>Le projet en bref</h2>
+      <p class="sub">Qu'est-ce que ft_irc, et quel est ton rôle dedans.</p>
+
+      <p><strong>ft_irc</strong> = un <strong>serveur IRC</strong> écrit en C++98. Un programme qui écoute sur un port TCP, accepte plusieurs clients en même temps (irssi, WeeChat, netcat…) et parle le protocole IRC : authentification, pseudos, salons de discussion, messages privés, commandes d'opérateur.</p>
+
+      <div class="callout info">
+        <b>La règle d'or du sujet :</b> un seul processus, un seul <code>poll()</code>, des sockets <b>non-bloquants</b>. Pas de thread, pas de <code>fork</code>. Tout le monde est multiplexé dans une boucle unique.
+      </div>
+
+      <h3>La répartition dans l'équipe</h3>
+      <table>
+        <tr><th>Coéquipier 1</th><th>Coéquipier 2 (toi)</th></tr>
+        <tr>
+          <td>Couche réseau &amp; cycle de vie des connexions : boucle <code>poll</code>, buffering des données, parsing, signaux, robustesse (valgrind, déconnexions).</td>
+          <td>Logique IRC &amp; protocole : authentification, pseudos, <b>channels</b>, PRIVMSG, et les commandes opérateur (KICK/INVITE/TOPIC/MODE).</td>
+        </tr>
+      </table>
+
+      <h3>Les 3 fondations à blinder (dixit le sujet)</h3>
+      <ol>
+        <li><strong>La boucle <code>poll()</code></strong> — surveiller tous les sockets d'un coup. <span class="pill done">fait</span></li>
+        <li><strong>Le buffering des données partielles</strong> — TCP peut couper un message en morceaux. <span class="pill done">fait</span></li>
+        <li><strong>PING / PONG</strong> — sans ça, les vrais clients coupent la connexion. <span class="pill done">fait</span></li>
+      </ol>
+
+      <div class="callout ok">
+        <b>Bonne nouvelle :</b> les 3 fondations sont déjà en place et testées. C'est le plus difficile du projet.
+      </div>
+    </section>
+
+    <!-- ============ ARCHITECTURE ============ -->
+    <section id="archi">
+      <h2>Architecture &amp; flux</h2>
+      <p class="sub">Comment les pièces s'assemblent, et le trajet d'un message.</p>
+
+      <h3>Les 5 classes</h3>
+      <table>
+        <tr><th>Classe</th><th>Rôle</th><th>État</th></tr>
+        <tr><td><code>Server</code></td><td>Le cœur : socket, boucle poll, connexions, dispatcher, map des channels</td><td><span class="pill done">✓</span></td></tr>
+        <tr><td><code>Client</code></td><td>Un client connecté : fd, pseudo, buffers in/out, état d'enregistrement</td><td><span class="pill done">✓</span></td></tr>
+        <tr><td><code>Message</code></td><td>Une ligne parsée : commande + paramètres</td><td><span class="pill done">✓</span></td></tr>
+        <tr><td><code>Channel</code></td><td>Un salon : membres, modos, topic, modes, broadcast</td><td><span class="pill done">✓</span></td></tr>
+        <tr><td><code>main</code></td><td>Point d'entrée : arguments, signaux, lance le serveur</td><td><span class="pill done">✓</span></td></tr>
+      </table>
+
+      <h3>Le trajet d'un message</h3>
+      <p>Quand un client tape <code>NICK bob</code> :</p>
+      <div class="card flow">
+        <div>client tape <span class="str">"NICK bob\r\n"</span></div>
+        <div><span class="arrow">↓</span> <b>poll()</b> détecte des données sur le socket</div>
+        <div><span class="arrow">↓</span> <b>recv()</b> lit les octets → <b>inBuffer</b> du client</div>
+        <div><span class="arrow">↓</span> on découpe sur <span class="str">"\r\n"</span> → une ligne complète</div>
+        <div><span class="arrow">↓</span> <b>Message::parse()</b> → { command:<span class="str">"NICK"</span>, param:[<span class="str">"bob"</span>] }</div>
+        <div><span class="arrow">↓</span> <b>dispatcher()</b> aiguille vers <b>handleNick()</b></div>
+        <div><span class="arrow">↓</span> handleNick traite + écrit la réponse dans <b>outBuffer</b></div>
+        <div><span class="arrow">↓</span> poll() voit qu'il y a à écrire → <b>flushClient()</b> → <b>send()</b></div>
+      </div>
+
+      <div class="callout info">
+        <b>Point clé :</b> on ne <code>send()</code> jamais directement dans un handler. On <b>écrit dans le outBuffer</b>, et c'est la boucle poll qui envoie quand le socket est prêt (via <code>POLLOUT</code>). C'est ça, le « buffer + POLLOUT » propre.
+      </div>
+
+      <h3>La boucle poll, en résumé</h3>
+      <ol>
+        <li>Pour chaque client : écouter <code>POLLIN</code> (lecture), et <code>POLLOUT</code> <em>uniquement</em> s'il reste des choses à envoyer.</li>
+        <li><code>poll()</code> bloque jusqu'à ce qu'un socket ait quelque chose.</li>
+        <li>Nouvelle connexion sur le socket d'écoute → <code>acceptClient()</code>.</li>
+        <li>Données sur un client → <code>handleClient()</code> (lire + découper + dispatcher).</li>
+        <li>Socket prêt à écrire → <code>flushClient()</code>.</li>
+        <li>Déconnexions différées à la fin du tour (jamais au milieu).</li>
+      </ol>
+    </section>
+
+    <!-- ============ KEY POINTS ============ -->
+    <section id="keys">
+      <h2>Points clés à maîtriser</h2>
+      <p class="sub">Ce qu'un examinateur va vraiment tester et te demander d'expliquer.</p>
+
+      <div class="card">
+        <h4># Sockets non-bloquants</h4>
+        <p>Chaque socket est passé en <code>O_NONBLOCK</code> via <code>fcntl</code>. Un <code>recv</code>/<code>send</code> ne <b>bloque</b> jamais le serveur : s'il n'y a rien, il rend la main immédiatement (<code>EAGAIN</code>). Indispensable pour servir N clients sans threads.</p>
+      </div>
+
+      <div class="card">
+        <h4># Buffering des données partielles</h4>
+        <p>TCP est un <b>flux</b>, pas des messages. <code>"NIC"</code> peut arriver, puis <code>"K bob\r\n"</code> plus tard ; ou deux commandes d'un coup. On <b>accumule</b> dans <code>inBuffer</code> et on ne traite une ligne que lorsqu'un <code>\r\n</code> complet est présent — dans une <b>boucle</b>, pour vider plusieurs commandes reçues ensemble.</p>
+      </div>
+
+      <div class="card">
+        <h4># Enregistrement en 3 temps</h4>
+        <p><code>PASS</code> + <code>NICK</code> + <code>USER</code> doivent tous être fournis avant que le client soit <code>registred</code>. <code>checkRegister()</code> vérifie les 3 après <b>chaque</b> commande → l'ordre n'a pas d'importance. Une fois complet : messages de bienvenue <b>001 → 004</b>.</p>
+      </div>
+
+      <div class="card">
+        <h4># PING / PONG</h4>
+        <p>Le client envoie régulièrement <code>PING &lt;token&gt;</code> ; le serveur doit répondre <code>PONG &lt;token&gt;</code>. Sans ça, irssi/WeeChat considèrent le serveur mort et coupent.</p>
+      </div>
+
+      <div class="card">
+        <h4># Format des messages IRC</h4>
+        <p>Réponses numérotées : <code>:ircserv &lt;code&gt; &lt;nick&gt; &lt;cible&gt; :&lt;message&gt;</code>. Le <code>:</code> final introduit un paramètre « trailing » qui peut contenir des espaces. Exemple : <code>:ircserv 353 bob = #test :@bob alice</code>.</p>
+      </div>
+
+      <div class="card">
+        <h4># Gestion mémoire (zéro fuite)</h4>
+        <p>Chaque <code>new Client</code> / <code>new Channel</code> a son <code>delete</code> (à la déconnexion et dans le destructeur du <code>Server</code>). Testé à la soutenance avec <b>valgrind</b>.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Dette technique à corriger :</b> le format des erreurs n'est pas homogène. Les anciens handlers renvoient <code>"464: Password incorrect"</code> (format inventé) alors que JOIN utilise déjà le bon format <code>:ircserv 403 …</code>. À aligner avant la soutenance.
+      </div>
+    </section>
+
+    <!-- ============ FILES ============ -->
+    <section id="files">
+      <h2>Rôle de chaque fichier</h2>
+      <p class="sub">À quoi sert chaque fichier, ses fonctions clés, et pourquoi il est fait ainsi.</p>
+
+      <div class="callout info">
+        <b>Vue d'ensemble :</b> <code>header/</code> = les déclarations (le « quoi »), <code>src/</code> = le code (le « comment »). Les <code>src/commands/</code> regroupent les handlers de commandes IRC (une famille par fichier), tous membres de la classe <code>Server</code>.
+      </div>
+
+      <!-- main -->
+      <h3>Point d'entrée</h3>
+      <div class="card">
+        <h4>src/main.cpp</h4>
+        <p>Le démarrage du programme : <code>./ircserv &lt;port&gt; &lt;password&gt;</code>.</p>
+        <table>
+          <tr><th>Étape</th><th>Détail</th></tr>
+          <tr><td>Arguments</td><td>exige exactement 3 arguments, sinon message d'usage</td></tr>
+          <tr><td>Port</td><td>converti puis validé dans la plage <code>1024–65535</code></td></tr>
+          <tr><td>Signaux</td><td><code>SIGINT</code> &amp; <code>SIGQUIT</code> → <code>g_shutdown=1</code> ; <code>SIGPIPE</code> → ignoré</td></tr>
+          <tr><td>Lancement</td><td>crée le <code>Server</code> et appelle <code>run()</code></td></tr>
+        </table>
+        <p><span class="pill done">pourquoi</span> <code>SIGPIPE</code> est ignoré : écrire dans un socket fermé par le client enverrait ce signal, dont le comportement par défaut <b>tue le processus</b>. <code>g_shutdown</code> est une variable globale <code>sig_atomic_t</code> car c'est le seul type qu'un handler de signal peut modifier sans risque.</p>
+      </div>
+
+      <!-- server -->
+      <h3>Le cœur du serveur</h3>
+      <div class="card">
+        <h4>header/Server.hpp &amp; src/Server.cpp</h4>
+        <p>La classe centrale : elle possède le socket, la boucle d'événements, tous les clients et tous les channels. C'est elle qui orchestre tout.</p>
+        <table>
+          <tr><th>Membre / méthode</th><th>Rôle</th></tr>
+          <tr><td><code>setupSocket()</code></td><td>socket → SO_REUSEADDR → bind → listen → non-bloquant</td></tr>
+          <tr><td><code>run()</code></td><td>la <b>boucle poll</b> : prépare les events, attend, traite lecture/écriture/déconnexions</td></tr>
+          <tr><td><code>acceptClient()</code></td><td>accepte une connexion, la passe en non-bloquant, crée un <code>new Client</code></td></tr>
+          <tr><td><code>handleClient(fd)</code></td><td>lit avec <code>recv</code>, accumule dans le inBuffer, découpe par <code>\r\n</code>, dispatche</td></tr>
+          <tr><td><code>dispatcher()</code></td><td>aiguille selon la commande (PASS, NICK, USER, PING, JOIN…)</td></tr>
+          <tr><td><code>flushClient(fd)</code></td><td>envoie le outBuffer avec <code>send</code>, efface seulement ce qui est parti</td></tr>
+          <tr><td><code>disconnectClient(fd)</code></td><td>ferme le fd, retire des pollfds + clients, <code>delete</code></td></tr>
+          <tr><td><code>findClient(fd)</code> / <code>findChannel(name)</code></td><td>retrouver un client (par fd) / un channel (par nom)</td></tr>
+        </table>
+        <h4>Les données membres</h4>
+        <table>
+          <tr><td><code>_listenFd</code></td><td>le socket d'écoute</td></tr>
+          <tr><td><code>_pollfds</code></td><td><code>vector&lt;pollfd&gt;</code> — tous les fd surveillés par poll</td></tr>
+          <tr><td><code>_clients</code></td><td><code>vector&lt;Client*&gt;</code> — les clients connectés</td></tr>
+          <tr><td><code>_channels</code></td><td><code>map&lt;string, Channel*&gt;</code> — les salons, indexés par nom</td></tr>
+          <tr><td><code>_toDisconnect</code></td><td>fd à fermer <b>en fin de tour</b> (jamais au milieu de la boucle)</td></tr>
+        </table>
+        <p><span class="pill done">pourquoi</span> <code>map</code> pour les channels (recherche par nom, directe) mais <code>vector</code> pour les clients (on itère dessus à chaque tour). <span class="pill done">pourquoi</span> <code>_toDisconnect</code> : supprimer un élément en plein milieu de la boucle décalerait les index et ferait sauter des clients — on diffère donc le nettoyage.</p>
+      </div>
+
+      <!-- client -->
+      <h3>Les données</h3>
+      <div class="card">
+        <h4>header/Client.hpp</h4>
+        <p>Représente <b>un</b> client connecté. Classe « sac de données » : tout est inline dans le header (getters/setters simples), pas de <code>.cpp</code> associé.</p>
+        <table>
+          <tr><th>Attribut</th><th>Rôle</th></tr>
+          <tr><td><code>_fd</code></td><td>le socket du client</td></tr>
+          <tr><td><code>_nickName</code> / <code>_userName</code></td><td>son identité</td></tr>
+          <tr><td><code>_pass</code></td><td>a-t-il donné le bon mot de passe ?</td></tr>
+          <tr><td><code>_registred</code></td><td>a-t-il fini PASS + NICK + USER ?</td></tr>
+          <tr><td><code>_inBuffer</code></td><td>octets reçus pas encore traités (données fragmentées)</td></tr>
+          <tr><td><code>_outBuffer</code></td><td>octets à envoyer pas encore partis</td></tr>
+        </table>
+        <p><span class="pill done">pourquoi</span> deux buffers : TCP est un flux, pas des messages. Le inBuffer absorbe les messages coupés en morceaux, le outBuffer permet d'envoyer « quand le socket est prêt » via POLLOUT.</p>
+      </div>
+
+      <!-- message -->
+      <div class="card">
+        <h4>header/Message.hpp &amp; src/Message.cpp</h4>
+        <p>Transforme une ligne brute en structure exploitable. Une seule fonction statique : <code>Message::parse(line)</code>.</p>
+        <pre><code>Message::parse(<span class="str">"PRIVMSG #chan :hello world"</span>)
+   <span class="cmt">→</span> command = <span class="str">"PRIVMSG"</span>
+   <span class="cmt">→</span> param   = [ <span class="str">"#chan"</span>, <span class="str">"hello world"</span> ]</code></pre>
+        <p>La structure <code>Message</code> ne contient que deux champs : <code>command</code> (string) et <code>param</code> (vector de strings).</p>
+        <p><span class="pill done">pourquoi</span> le <code>:</code> : dès qu'un paramètre commence par <code>:</code>, tout le reste (espaces compris) devient <b>un seul</b> paramètre « trailing ». C'est le mécanisme IRC pour transporter un message contenant des espaces.</p>
+      </div>
+
+      <!-- commands -->
+      <h3>Les commandes (handlers)</h3>
+      <div class="card">
+        <h4>src/commands/Registration.cpp</h4>
+        <p>Toute l'authentification, plus deux briques réutilisées partout.</p>
+        <table>
+          <tr><th>Fonction</th><th>Rôle &amp; erreurs</th></tr>
+          <tr><td><code>reply(client, msg)</code></td><td>ajoute <code>\r\n</code> et pousse dans le outBuffer — <b>toutes</b> les réponses passent par là</td></tr>
+          <tr><td><code>checkRegister(client)</code></td><td>le « portier » : dès que PASS+NICK+USER sont OK, passe <code>registred</code> et envoie le welcome <b>001→004</b></td></tr>
+          <tr><td><code>handlePass</code></td><td>vide → 461, déjà donné → 462, mauvais → 464</td></tr>
+          <tr><td><code>handleNick</code></td><td>vide → 431, invalide → 432, déjà pris → 433</td></tr>
+          <tr><td><code>handleUser</code></td><td>déjà enregistré → 462, params manquants → 461</td></tr>
+        </table>
+        <p>Contient aussi <code>isValidNick()</code> / <code>specialChar()</code> : un nick doit commencer par une lettre ou un caractère spécial (<code>[]\\_^{}|`</code>), pas par un chiffre.</p>
+      </div>
+
+      <div class="card">
+        <h4>src/commands/Ping.cpp</h4>
+        <p><code>handlePing</code> : sans cible → 409, sinon répond <code>PONG :&lt;token&gt;</code>. Court mais <b>vital</b> — sans lui, les vrais clients coupent la connexion.</p>
+      </div>
+
+      <div class="card">
+        <h4>src/commands/Join.cpp</h4>
+        <p>La commande d'entrée dans un salon, découpée en 3 fonctions (détail complet dans la section <b>Dernières modifs</b>).</p>
+        <table>
+          <tr><td><code>handleJoin</code></td><td>orchestration : garde-fous, création/recherche, ajout, annonce</td></tr>
+          <tr><td><code>checkJoin</code></td><td>règles du salon : +i (473), +k (475), +l (471)</td></tr>
+          <tr><td><code>joinReplies</code></td><td>réponses 332 / 353 / 366</td></tr>
+          <tr><td><code>buildPrefix</code></td><td>construit <code>nick!user@host</code> (le « qui » de l'action)</td></tr>
+        </table>
+      </div>
+
+      <!-- channel -->
+      <h3>Les salons</h3>
+      <div class="card">
+        <h4>header/Channel.hpp &amp; src/Channel.cpp</h4>
+        <p>Représente <b>un</b> salon : ses membres, ses modos, son topic, ses règles. Ne touche jamais au réseau — c'est le <code>Server</code> qui l'utilise. Voir la section <b>Dernières modifs</b> pour le détail des méthodes.</p>
+        <p><span class="pill done">pourquoi</span> stocke des <code>Client*</code> (pointeurs) et non des copies : un client existe une seule fois en mémoire (dans le <code>Server</code>), le channel pointe simplement vers lui.</p>
+      </div>
+
+      <!-- utils + build -->
+      <h3>Utilitaires &amp; build</h3>
+      <div class="card">
+        <h4>header/Colors.hpp</h4>
+        <p>Macros de couleurs ANSI (<code>RED</code>, <code>GREEN</code>, <code>CYAN</code>…) pour rendre les logs du serveur lisibles dans le terminal. Purement cosmétique.</p>
+      </div>
+      <div class="card">
+        <h4>Makefile</h4>
+        <p>Compile le projet en C++98 strict (<code>-Wall -Wextra -Werror -std=c++98</code>). La variable <code>SRCS</code> liste les sources à la main : <b>ajouter chaque nouveau <code>.cpp</code></b> ici. Règles utiles : <code>make</code>, <code>make re</code> (recompile tout), <code>make fclean</code>.</p>
+        <p><span class="pill done">pourquoi</span> les objets vont dans <code>obj/</code> (via <code>OBJDIR</code>) pour ne pas polluer les sources.</p>
+      </div>
+    </section>
+
+    <!-- ============ RECENT ============ -->
+    <section id="recent">
+      <h2>Dernières modifs</h2>
+      <p class="sub">La classe Channel et la commande JOIN, ajoutées récemment.</p>
+
+      <h3>1 · La classe <code>Channel</code></h3>
+      <p>Fichiers : <code>header/Channel.hpp</code> + <code>src/Channel.cpp</code>. Un objet <code>Channel</code> représente un salon et répond à : qui est dedans, qui commande, quel est le sujet, quelles sont les règles.</p>
+
+      <table>
+        <tr><th>Catégorie</th><th>Méthodes</th></tr>
+        <tr><td>Membres</td><td><code>addMember</code>, <code>removeMember</code>, <code>isMember</code>, <code>getMembers</code>, <code>getMemberCount</code></td></tr>
+        <tr><td>Modos (opérateurs)</td><td><code>addModo</code>, <code>removeModo</code>, <code>isModo</code></td></tr>
+        <tr><td>Invites (mode +i)</td><td><code>addInvite</code>, <code>removeInvite</code>, <code>isInvited</code></td></tr>
+        <tr><td>Modes i/t/k/l</td><td><code>setInviteOnly</code>, <code>setTopicRestricted</code>, <code>setKey</code>/<code>removeKey</code>, <code>setLimit</code>/<code>removeLimit</code></td></tr>
+        <tr><td>Utils</td><td><code>broadcast(msg, except)</code>, <code>getNamesList()</code></td></tr>
+      </table>
+
+      <div class="callout info">
+        <b>Choix de conception :</b> on a écrit dès maintenant tout ce dont les Phases 4 <b>et</b> 5 auront besoin (modes, invites), pour ne pas rouvrir ce fichier plus tard.
+      </div>
+
+      <h4>Deux détails qui évitent des bugs</h4>
+      <ul>
+        <li><code>removeMember</code> appelle aussi <code>removeModo</code> → un membre qui part ne reste pas « modo fantôme ».</li>
+        <li><code>broadcast</code> ajoute le <code>\r\n</code> et sait <b>exclure</b> l'expéditeur (paramètre <code>except</code>).</li>
+      </ul>
+
+      <h4>Note vocabulaire</h4>
+      <p>Dans <b>ton code</b> on parle de <code>modo</code> (plus parlant), mais <b>sur le réseau</b> le protocole garde le terme « operator » : le préfixe <code>@</code>, le mode <code>+o</code>, l'erreur <code>482</code> restent inchangés.</p>
+
+      <h3>2 · La commande <code>JOIN</code></h3>
+      <p>Fichier : <code>src/commands/Join.cpp</code>. C'est la première commande qui <b>utilise</b> la classe Channel. Découpée en 3 fonctions à responsabilité unique :</p>
+
+      <table>
+        <tr><th>Fonction</th><th>Rôle</th></tr>
+        <tr><td><code>handleJoin</code></td><td>Orchestration : valide, crée/trouve le salon, ajoute le membre, déclenche le reste</td></tr>
+        <tr><td><code>checkJoin</code></td><td>Vérifie les règles du salon : +i (473), +k (475), +l (471)</td></tr>
+        <tr><td><code>joinReplies</code></td><td>Envoie topic (332) + liste des noms (353) + fin de liste (366)</td></tr>
+      </table>
+
+      <h4>Le déroulé de handleJoin</h4>
+      <pre><code><span class="cmt">// 1. garde-fous</span>
+non enregistré        <span class="fn">→ 451</span>
+pas de nom de channel <span class="fn">→ 461</span>
+nom sans '#'          <span class="fn">→ 403</span>
+
+<span class="cmt">// 2. trouver ou créer le salon</span>
+chan = findChannel(name)  <span class="cmt">ou</span>  new Channel(name)
+déjà membre <span class="fn">→ return</span>
+
+<span class="cmt">// 3. règles (seulement si le salon existait déjà)</span>
+if (!created &amp;&amp; !checkJoin(...))  <span class="fn">→ return</span>
+
+<span class="cmt">// 4. ajout + annonce</span>
+addMember() ; si créateur <span class="fn">→ addModo()</span>
+broadcast(<span class="str">":bob!bob@localhost JOIN #test"</span>)
+joinReplies(...)   <span class="cmt">// 332 / 353 / 366</span></code></pre>
+
+      <div class="callout ok">
+        <b>Testé et validé :</b> deux clients rejoignant <code>#test</code> se voient mutuellement, le créateur apparaît en <code>@bob</code> (modo), et le broadcast d'arrivée fonctionne.
+      </div>
+
+      <h4>Modifs annexes pour brancher JOIN</h4>
+      <ul>
+        <li><code>Server.hpp</code> : ajout de la map <code>_channels</code>, include de <code>Channel.hpp</code>, déclarations.</li>
+        <li><code>Server.cpp</code> : <code>findChannel()</code>, <code>delete</code> des channels dans <code>~Server()</code>, route <code>JOIN</code> dans le dispatcher.</li>
+        <li><code>Makefile</code> : ajout de <code>src/commands/Join.cpp</code>.</li>
+      </ul>
+    </section>
+
+    <!-- ============ Q&A ============ -->
+    <section id="qa">
+      <h2>Questions / Réponses</h2>
+      <p class="sub">Les questions typiques de soutenance — entraîne-toi à y répondre à voix haute.</p>
+
+      <details><summary>Pourquoi un seul <code>poll()</code> et pas un thread par client ?</summary>
+        <div class="body">Le sujet l'impose, mais c'est aussi la bonne approche : <code>poll()</code> surveille tous les sockets d'un coup et nous dit lesquels sont prêts. Un seul processus, pas de synchronisation, pas de data race. On ne « perd » pas de temps à attendre car les sockets sont non-bloquants.</div>
+      </details>
+
+      <details><summary>Que se passe-t-il si un message arrive en deux morceaux ?</summary>
+        <div class="body">On accumule tout dans le <code>inBuffer</code> du client. On ne traite une commande que quand un <code>\r\n</code> complet est présent. Un message coupé attend simplement le morceau suivant. À l'inverse, si plusieurs commandes arrivent ensemble, une boucle les traite toutes.</div>
+      </details>
+
+      <details><summary>Pourquoi écrire dans un outBuffer au lieu de <code>send()</code> directement ?</summary>
+        <div class="body">Parce qu'un socket peut ne pas être prêt à écrire, ou n'accepter qu'une partie des octets. On stocke la réponse dans le <code>outBuffer</code> et on active <code>POLLOUT</code> ; la boucle poll envoie quand c'est possible, et <code>flushClient</code> n'efface que ce qui est réellement parti.</div>
+      </details>
+
+      <details><summary>Pourquoi PING / PONG est-il obligatoire ?</summary>
+        <div class="body">Les vrais clients envoient des PING pour vérifier que le serveur est vivant. Sans réponse PONG, ils considèrent la connexion morte et se déconnectent au bout de quelques secondes.</div>
+      </details>
+
+      <details><summary>Quelle différence entre PRIVMSG vers un user et vers un channel ?</summary>
+        <div class="body">Vers un <b>user</b> : message privé, un seul destinataire (on cherche le client par son nick). Vers un <b>channel</b> (<code>#…</code>) : broadcast à tous les membres du salon, sauf l'expéditeur. Les deux réutilisent <code>findClient</code>/<code>findChannel</code> + <code>broadcast</code>.</div>
+      </details>
+
+      <details><summary>Qu'est-ce qu'un opérateur (modo) de channel ?</summary>
+        <div class="body">Un membre avec des droits d'administration sur le salon : il peut KICK, INVITE, changer le TOPIC (si +t), et modifier les MODE. Le créateur du salon en devient automatiquement un. Affiché avec un <code>@</code> devant son pseudo. Un non-op qui tente une commande op reçoit l'erreur <code>482</code>.</div>
+      </details>
+
+      <details><summary>Pourquoi une <code>map</code> pour les channels et un <code>vector</code> pour les clients ?</summary>
+        <div class="body">On cherche toujours un channel <b>par son nom</b> → la map fait ça directement, sans boucle. Les clients, on itère surtout dessus (poll, broadcast) et on les cherche par fd → un vector suffit.</div>
+      </details>
+
+      <details><summary>Comment éviter les fuites mémoire ?</summary>
+        <div class="body">Chaque <code>new</code> a son <code>delete</code> : à la déconnexion d'un client (<code>disconnectClient</code>) et pour tous les clients + channels dans le destructeur <code>~Server()</code>. On vérifie avec valgrind qu'aucun bloc n'est perdu, y compris après Ctrl-C.</div>
+      </details>
+
+      <details><summary>À quoi sert <code>SO_REUSEADDR</code> ?</summary>
+        <div class="body">Il permet de relancer le serveur immédiatement sur le même port sans attendre que l'OS libère l'ancien socket (état TIME_WAIT). Sans lui, on aurait « Address already in use » à chaque relance rapide.</div>
+      </details>
+
+      <details><summary>Pourquoi ignorer <code>SIGPIPE</code> ?</summary>
+        <div class="body">Si on écrit dans un socket que le client vient de fermer, l'OS envoie <code>SIGPIPE</code> dont le comportement par défaut est de <b>tuer</b> le processus. On l'ignore (<code>SIG_IGN</code>) et on gère l'erreur d'écriture nous-mêmes.</div>
+      </details>
+    </section>
+
+    <!-- ============ PROGRESS ============ -->
+    <section id="progress">
+      <h2>Avancement &amp; suite</h2>
+      <p class="sub">Où on en est, et la feuille de route jusqu'à 100 %.</p>
+
+      <h3>Progression globale</h3>
+      <div class="progress-bar"><div class="progress-fill">≈ 55 %</div></div>
+
+      <h3>Fait</h3>
+      <table>
+        <tr><th>Bloc</th><th>État</th></tr>
+        <tr><td>Fondations réseau (poll, buffers, socket, signaux, parsing)</td><td><span class="pill done">✓</span></td></tr>
+        <tr><td>Auth : PASS / NICK / USER + welcome 001-004</td><td><span class="pill done">✓</span></td></tr>
+        <tr><td>PING / PONG</td><td><span class="pill done">✓</span></td></tr>
+        <tr><td>Classe Channel</td><td><span class="pill done">✓</span></td></tr>
+        <tr><td>JOIN (353 / 366 / broadcast / gates modes)</td><td><span class="pill done">✓</span></td></tr>
+      </table>
+
+      <h3>Reste à faire</h3>
+      <table>
+        <tr><th>Bloc</th><th>Priorité</th></tr>
+        <tr><td>PRIVMSG (user privé + broadcast salon)</td><td><span class="pill todo">🔴 haute</span></td></tr>
+        <tr><td>PART (quitter un salon)</td><td><span class="pill todo">🟠</span></td></tr>
+        <tr><td>QUIT (déconnexion + notifier)</td><td><span class="pill todo">🟠</span></td></tr>
+        <tr><td>NICK en cours de session (broadcast)</td><td><span class="pill todo">🟠</span></td></tr>
+        <tr><td>KICK / INVITE / TOPIC / MODE (i,t,k,o,l)</td><td><span class="pill todo">🟡 Phase 5</span></td></tr>
+        <tr><td>Nettoyage du format des erreurs</td><td><span class="pill no">🟢 finition</span></td></tr>
+      </table>
+
+      <h3>Feuille de route</h3>
+      <pre><code>[55%] ── tu es ici
+  ├─ PRIVMSG        <span class="fn">→ 65%</span>   (le gros test de soutenance)
+  ├─ PART + QUIT    <span class="fn">→ 74%</span>
+  ├─ NICK live      <span class="fn">→ 77%</span>   (Phase 4 terminée)
+  ├─ TOPIC          <span class="fn">→ 82%</span>
+  ├─ KICK + INVITE  <span class="fn">→ 90%</span>
+  ├─ MODE (5 flags) <span class="fn">→ 97%</span>   (Phase 5 terminée)
+  └─ Format erreurs <span class="fn">→ 100%</span>  (finition + valgrind)</code></pre>
+
+      <div class="callout info">
+        <b>Prochaine étape recommandée : PRIVMSG.</b> Meilleur rapport valeur/effort — il réutilise directement <code>findChannel</code> + <code>broadcast</code>, c'est la commande la plus testée, et il débloque le test « deux clients qui discutent ».
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  const links = document.querySelectorAll('#nav a, nav a');
+  const sections = document.querySelectorAll('section');
+  function show(id){
+    sections.forEach(s => s.classList.toggle('visible', s.id === id));
+    document.querySelectorAll('nav a').forEach(a =>
+      a.classList.toggle('active', a.getAttribute('href') === '#' + id));
+    document.querySelector('aside').classList.remove('open');
+    window.scrollTo({top:0});
+  }
+  document.querySelectorAll('nav a').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      show(a.getAttribute('href').slice(1));
+      history.replaceState(null, '', a.getAttribute('href'));
+    });
+  });
+  // ouvrir la section de l'URL si présente
+  if (location.hash) show(location.hash.slice(1));
+</script>
+</body>
+</html>

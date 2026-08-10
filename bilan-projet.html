@@ -1,0 +1,1468 @@
+<title>ft_irc — État du projet</title>
+<style>
+  /* ============ TOKENS ============ */
+  :root{
+    --paper:#EDEFF2;
+    --surface:#F7F8FA;
+    --surface-2:#E2E7EC;
+    --ink:#1B2129;
+    --ink-2:#49545F;
+    --ink-3:#75818E;
+    --rule:#CBD3DC;
+    --rule-strong:#A9B4C0;
+    --accent:#A66A16;
+    --accent-ink:#8A5710;
+    --accent-wash:#F2E7D4;
+    --good:#2E7D51;
+    --good-wash:#DDEEE4;
+    --crit:#B4322A;
+    --crit-wash:#F6E0DE;
+    --todo:#5E6B7C;
+    --todo-wash:#E3E8ED;
+
+    /* the "screen" surface — deliberately identical in both themes */
+    --screen:#161B21;
+    --screen-2:#1D242C;
+    --screen-rule:#2E3742;
+    --screen-ink:#DDE3EA;
+    --screen-ink-2:#93A0AE;
+
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --serif:Charter,"Bitstream Charter","Sitka Text",Cambria,Georgia,"Times New Roman",serif;
+
+    --col:68ch;
+    --wide:1060px;
+  }
+
+  @media (prefers-color-scheme:dark){
+    :root{
+      --paper:#14181D;
+      --surface:#1A1F26;
+      --surface-2:#232B34;
+      --ink:#E4E8ED;
+      --ink-2:#AAB5C1;
+      --ink-3:#7C8896;
+      --rule:#2B333D;
+      --rule-strong:#3C4652;
+      --accent:#D9A441;
+      --accent-ink:#E8BC6A;
+      --accent-wash:#2C2517;
+      --good:#4FB07A;
+      --good-wash:#16281F;
+      --crit:#E0776B;
+      --crit-wash:#2E1B19;
+      --todo:#8896A6;
+      --todo-wash:#1F262E;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#14181D; --surface:#1A1F26; --surface-2:#232B34;
+    --ink:#E4E8ED; --ink-2:#AAB5C1; --ink-3:#7C8896;
+    --rule:#2B333D; --rule-strong:#3C4652;
+    --accent:#D9A441; --accent-ink:#E8BC6A; --accent-wash:#2C2517;
+    --good:#4FB07A; --good-wash:#16281F;
+    --crit:#E0776B; --crit-wash:#2E1B19;
+    --todo:#8896A6; --todo-wash:#1F262E;
+  }
+  :root[data-theme="light"]{
+    --paper:#EDEFF2; --surface:#F7F8FA; --surface-2:#E2E7EC;
+    --ink:#1B2129; --ink-2:#49545F; --ink-3:#75818E;
+    --rule:#CBD3DC; --rule-strong:#A9B4C0;
+    --accent:#A66A16; --accent-ink:#8A5710; --accent-wash:#F2E7D4;
+    --good:#2E7D51; --good-wash:#DDEEE4;
+    --crit:#B4322A; --crit-wash:#F6E0DE;
+    --todo:#5E6B7C; --todo-wash:#E3E8ED;
+  }
+
+  /* ============ BASE ============ */
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--serif);
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  p,ul,ol{margin:0}
+  a{color:var(--accent-ink);text-underline-offset:3px;text-decoration-thickness:1px}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+  code{font-family:var(--mono);font-size:.855em}
+
+  /* ============ MASTHEAD ============ */
+  .masthead{
+    border-bottom:1px solid var(--rule-strong);
+    background:var(--surface);
+  }
+  .masthead-inner{
+    max-width:var(--wide);margin:0 auto;padding:44px 28px 30px;
+    display:flex;flex-direction:column;gap:22px;
+  }
+  .doc-line{
+    display:flex;flex-wrap:wrap;gap:10px 26px;align-items:baseline;
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-3);
+  }
+  .doc-line b{color:var(--accent-ink);font-weight:600}
+  .masthead h1{
+    font-family:var(--mono);font-size:clamp(30px,5.2vw,46px);
+    font-weight:600;letter-spacing:-.015em;line-height:1.06;
+    color:var(--ink);text-wrap:balance;
+  }
+  .masthead h1 em{font-style:normal;color:var(--accent)}
+  .standfirst{
+    max-width:60ch;color:var(--ink-2);font-size:18px;
+  }
+
+  /* ============ KPI STRIP ============ */
+  .kpis{
+    display:grid;gap:1px;background:var(--rule);
+    grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+    border:1px solid var(--rule);
+  }
+  .kpi{background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:3px}
+  .kpi dt{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--ink-3);
+  }
+  .kpi dd{
+    font-family:var(--mono);font-size:26px;font-weight:600;
+    font-variant-numeric:tabular-nums;line-height:1.15;color:var(--ink);
+  }
+  .kpi dd small{font-size:14px;font-weight:400;color:var(--ink-3)}
+  .kpi[data-tone="good"] dd{color:var(--good)}
+  .kpi[data-tone="crit"] dd{color:var(--crit)}
+  .kpi[data-tone="accent"] dd{color:var(--accent)}
+
+  /* ============ NAV ============ */
+  .toc{
+    position:sticky;top:0;z-index:20;
+    background:var(--paper);border-bottom:1px solid var(--rule);
+    overflow-x:auto;
+  }
+  .toc ol{
+    max-width:var(--wide);margin:0 auto;padding:0 28px;
+    display:flex;gap:22px;list-style:none;white-space:nowrap;
+  }
+  .toc a{
+    display:block;padding:11px 0;text-decoration:none;
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ink-3);
+    border-bottom:2px solid transparent;
+  }
+  .toc a:hover{color:var(--accent-ink);border-bottom-color:var(--accent)}
+
+  /* ============ SECTIONS ============ */
+  main{max-width:var(--wide);margin:0 auto;padding:0 28px 100px}
+  section{
+    padding:52px 0;
+    border-bottom:1px solid var(--rule);
+    display:grid;
+    grid-template-columns:56px minmax(0,1fr);
+    column-gap:24px;
+  }
+  section:last-of-type{border-bottom:0}
+  .num{
+    font-family:var(--mono);font-size:12px;letter-spacing:.04em;
+    color:var(--accent);padding-top:10px;font-variant-numeric:tabular-nums;
+  }
+  .body{display:flex;flex-direction:column;gap:20px;min-width:0}
+  .body > h2{
+    font-family:var(--mono);font-size:clamp(21px,3vw,27px);
+    font-weight:600;letter-spacing:-.01em;line-height:1.2;
+    color:var(--ink);text-wrap:balance;
+  }
+  .body > h3{
+    font-family:var(--mono);font-size:13px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--ink-3);
+    padding-top:10px;border-top:1px solid var(--rule);
+  }
+  .body p,.body ul,.body ol{max-width:var(--col)}
+  .body ul,.body ol{padding-left:1.15em;display:flex;flex-direction:column;gap:7px}
+  .body li::marker{color:var(--ink-3)}
+
+  /* ============ SCREEN PANELS (diagrams + code) ============ */
+  .screen{
+    background:var(--screen);
+    border:1px solid var(--screen-rule);
+    border-radius:3px;
+    overflow:hidden;
+  }
+  .screen-bar{
+    display:flex;justify-content:space-between;align-items:center;gap:16px;
+    padding:8px 14px;border-bottom:1px solid var(--screen-rule);
+    background:var(--screen-2);
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--screen-ink-2);
+  }
+  .screen-bar span:last-child{color:#A98443;letter-spacing:.06em}
+  .screen-body{padding:20px 16px;overflow-x:auto}
+  .screen-body pre.mermaid{display:flex;justify-content:center;min-width:min-content}
+  pre.term{
+    font-family:var(--mono);font-size:12.5px;line-height:1.65;
+    color:var(--screen-ink);padding:16px;overflow-x:auto;margin:0;
+  }
+  pre.term .c{color:var(--screen-ink-2)}
+  pre.term .k{color:#D9A441}
+  pre.term .g{color:#6FBF92}
+  pre.term .r{color:#E0776B}
+
+  /* ============ PROGRESS METERS ============ */
+  .meters{display:flex;flex-direction:column;gap:14px;border:1px solid var(--rule);background:var(--surface);padding:20px 18px}
+  .meter{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(90px,3fr) 46px;gap:14px;align-items:center}
+  .meter-label{font-family:var(--mono);font-size:12px;color:var(--ink-2);letter-spacing:.02em}
+  .meter-track{height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden}
+  .meter-fill{height:100%;border-radius:3px;background:var(--accent)}
+  .meter-fill[data-tone="good"]{background:var(--good)}
+  .meter-fill[data-tone="todo"]{background:var(--todo)}
+  .meter-val{
+    font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;
+    text-align:right;color:var(--ink-2);
+  }
+
+  /* ============ TABLES ============ */
+  .table-wrap{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;min-width:520px}
+  th,td{
+    text-align:left;padding:9px 14px;
+    border-bottom:1px solid var(--rule);
+    font-family:var(--mono);font-size:12.5px;vertical-align:top;
+  }
+  th{
+    font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--ink-3);font-weight:600;background:var(--surface-2);
+    position:sticky;top:0;
+  }
+  tbody tr:last-child td{border-bottom:0}
+  td.desc{font-family:var(--serif);font-size:14.5px;color:var(--ink-2);line-height:1.5}
+  td.num-col{font-variant-numeric:tabular-nums;color:var(--ink-3)}
+
+  /* ============ CHIPS ============ */
+  .chip{
+    display:inline-flex;align-items:center;gap:5px;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+    text-transform:uppercase;padding:2px 7px;border-radius:2px;
+    border:1px solid;white-space:nowrap;
+  }
+  .chip::before{font-size:11px;line-height:1}
+  .chip.ok{color:var(--good);background:var(--good-wash);border-color:var(--good)}
+  .chip.ok::before{content:"✓"}
+  .chip.bug{color:var(--crit);background:var(--crit-wash);border-color:var(--crit)}
+  .chip.bug::before{content:"!"}
+  .chip.todo{color:var(--todo);background:var(--todo-wash);border-color:var(--rule-strong)}
+  .chip.todo::before{content:"·"}
+  .chip.part{color:var(--accent-ink);background:var(--accent-wash);border-color:var(--accent)}
+  .chip.part::before{content:"~"}
+
+  /* ============ BUG CARDS ============ */
+  .bugs{display:flex;flex-direction:column;gap:14px}
+  .bug{
+    border:1px solid var(--rule);background:var(--surface);
+    border-left:3px solid var(--rule-strong);
+    padding:16px 18px;display:flex;flex-direction:column;gap:10px;
+  }
+  .bug[data-sev="crit"]{border-left-color:var(--crit)}
+  .bug[data-sev="med"]{border-left-color:var(--accent)}
+  .bug[data-sev="low"]{border-left-color:var(--todo)}
+  .bug-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:baseline}
+  .bug-head h4{
+    font-family:var(--mono);font-size:14.5px;font-weight:600;color:var(--ink);
+    letter-spacing:-.005em;
+  }
+  .bug-loc{font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+  .bug p{font-size:15.5px;color:var(--ink-2);max-width:var(--col)}
+  .bug .fix{
+    font-family:var(--mono);font-size:12px;color:var(--ink-2);
+    background:var(--surface-2);padding:9px 12px;border-radius:2px;
+    overflow-x:auto;white-space:pre;
+  }
+
+  /* ============ TIMELINE ============ */
+  .timeline{display:flex;flex-direction:column;border-left:1px solid var(--rule-strong);padding-left:0}
+  .tl-row{display:grid;grid-template-columns:88px 1fr;gap:16px;padding:11px 0 11px 18px;position:relative}
+  .tl-row::before{
+    content:"";position:absolute;left:-4px;top:20px;
+    width:7px;height:7px;border-radius:50%;
+    background:var(--paper);border:1.5px solid var(--rule-strong);
+  }
+  .tl-row[data-done="yes"]::before{background:var(--accent);border-color:var(--accent)}
+  .tl-date{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);padding-top:3px;font-variant-numeric:tabular-nums}
+  .tl-body strong{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--ink);display:block}
+  .tl-body span{font-size:14.5px;color:var(--ink-2)}
+
+  /* ============ NEXT STEPS ============ */
+  .steps{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+  .step{
+    background:var(--surface);padding:15px 18px;
+    display:grid;grid-template-columns:30px 1fr auto;gap:16px;align-items:start;
+  }
+  .step-n{
+    font-family:var(--mono);font-size:12px;color:var(--accent);
+    font-variant-numeric:tabular-nums;padding-top:2px;
+  }
+  .step-txt strong{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--ink);display:block;margin-bottom:3px}
+  .step-txt span{font-size:14.5px;color:var(--ink-2)}
+  .step-cost{
+    font-family:var(--mono);font-size:11px;color:var(--ink-3);
+    letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;padding-top:3px;
+  }
+
+  /* ============ LOTS ============ */
+  .lots{display:flex;flex-direction:column;gap:20px}
+  .lot{border:1px solid var(--rule);background:var(--surface);display:flex;flex-direction:column;border-left:3px solid var(--rule-strong)}
+  .lot[data-urg="now"]{border-left-color:var(--crit)}
+  .lot[data-urg="base"]{border-left-color:var(--accent)}
+  .lot[data-urg="build"]{border-left-color:var(--good)}
+  .lot-head{
+    display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;
+    padding:14px 18px;border-bottom:1px solid var(--rule);background:var(--surface-2);
+  }
+  .lot-head h4{font-family:var(--mono);font-size:14.5px;font-weight:600;color:var(--ink)}
+  .lot-cost{
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-3);margin-left:auto;white-space:nowrap;
+  }
+  .lot-why{padding:14px 18px;font-size:15px;color:var(--ink-2);border-bottom:1px solid var(--rule)}
+  .lot-why p{max-width:var(--col)}
+  .lot .steps{border:0}
+
+  /* ============ CHECKLIST ============ */
+  .body ul.dod{
+    padding-left:0;gap:0;max-width:none;list-style:none;
+    border:1px solid var(--rule);background:var(--surface);
+  }
+  ul.dod li{
+    padding:10px 16px 10px 40px;border-bottom:1px solid var(--rule);
+    position:relative;font-size:15px;color:var(--ink-2);
+  }
+  ul.dod li:last-child{border-bottom:0}
+  ul.dod li::marker{content:none}
+  ul.dod li::before{
+    content:"\2610";position:absolute;left:15px;top:9px;
+    font-family:var(--mono);color:var(--accent);font-size:15px;line-height:1.5;
+  }
+  ul.dod li b{color:var(--ink);font-family:var(--mono);font-size:13px;font-weight:600}
+
+  /* ============ CALLOUT ============ */
+  .callout{
+    border:1px solid var(--accent);background:var(--accent-wash);
+    padding:15px 18px;display:flex;flex-direction:column;gap:7px;
+  }
+  .callout strong{
+    font-family:var(--mono);font-size:11px;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--accent-ink);
+  }
+  .callout p{font-size:15.5px;color:var(--ink-2);max-width:var(--col)}
+
+  footer{
+    max-width:var(--wide);margin:0 auto;padding:26px 28px 60px;
+    border-top:1px solid var(--rule);
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ink-3);
+    display:flex;flex-wrap:wrap;gap:8px 24px;
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width:720px){
+    body{font-size:16px}
+    section{grid-template-columns:1fr;row-gap:8px}
+    .num{padding-top:0}
+    .meter{grid-template-columns:1fr;gap:5px}
+    .meter-val{text-align:left}
+    .step{grid-template-columns:24px 1fr;row-gap:6px}
+    .step-cost{grid-column:2}
+    .tl-row{grid-template-columns:1fr;gap:2px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+    html{scroll-behavior:auto}
+  }
+  html{scroll-behavior:smooth}
+</style>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="doc-line">
+      <span>ft_irc · 42</span>
+      <span>Branche <b>magillie</b> · 589d2dc</span>
+      <span>40 commits · 2 auteurs</span>
+      <span>Révision du 10 août 2026</span>
+    </div>
+    <h1>Le réseau tient, le chat commence —<br><em>mais le build ne passe plus</em>.</h1>
+    <p class="standfirst">
+      Le pull du collègue apporte deux commits de <strong>réorganisation pure</strong> :
+      <code>Server.cpp</code> éclaté en trois fichiers, zéro ligne de logique changée.
+      Le Makefile n'a pas suivi la suppression de <code>Client.cpp</code>, donc
+      <code>make</code> échoue. Les deux crashs signalés à la révision précédente sont
+      toujours là, vérifiés sur le binaire d'aujourd'hui.
+    </p>
+    <dl class="kpis">
+      <div class="kpi"><dt>Lignes de code</dt><dd>1 064</dd></div>
+      <div class="kpi"><dt>Commandes IRC</dt><dd>5<small> / 12</small></dd></div>
+      <div class="kpi" data-tone="accent"><dt>Avancement</dt><dd>45<small>%</small></dd></div>
+      <div class="kpi" data-tone="crit"><dt>Compilation</dt><dd>KO</dd></div>
+      <div class="kpi" data-tone="crit"><dt>Crashs confirmés</dt><dd>2</dd></div>
+    </dl>
+    <div class="callout">
+      <strong>Depuis la dernière révision</strong>
+      <p>
+        Deux commits, aucune commande gagnée. <code>src/Server.cpp</code> a été scindé en
+        <code>Server.cpp</code> + <code>ServerClient.cpp</code> + <code>ServerDispatch.cpp</code>,
+        et <code>src/Client.cpp</code> (qui était vide) supprimé — mais il figure encore dans le
+        <code>SRCS</code> du Makefile. <strong>Une ligne à retirer et tout recompile.</strong>
+        Vérifié : c'est le seul obstacle, le reste compile sans un warning.
+      </p>
+    </div>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Sommaire">
+  <ol>
+    <li><a href="#sujet">§1 Le sujet</a></li>
+    <li><a href="#archi">§2 Architecture</a></li>
+    <li><a href="#flux">§3 Flux d'un message</a></li>
+    <li><a href="#etats">§4 Enregistrement</a></li>
+    <li><a href="#join">§5 Anatomie du JOIN</a></li>
+    <li><a href="#chemin">§6 Chemin parcouru</a></li>
+    <li><a href="#etat">§7 Où on en est</a></li>
+    <li><a href="#bugs">§8 Bugs</a></li>
+    <li><a href="#reste">§9 Plan d'action</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ============================================ §1 -->
+<section id="sujet">
+  <div class="num">§1</div>
+  <div class="body">
+    <h2>Le sujet, en une page</h2>
+    <p>
+      IRC est un protocole de chat en texte brut sur TCP, né en 1988. Un serveur central écoute,
+      des clients s'y connectent, s'authentifient, choisissent un pseudo, rejoignent des salons
+      et s'envoient des messages. Chaque échange est une ligne de texte terminée par
+      <code>CRLF</code>. Vous codez le serveur — jamais le client : à l'évaluation, un vrai
+      client (irssi) se branche dessus.
+    </p>
+    <p>Les contraintes 42 qui structurent tout le reste :</p>
+    <ul>
+      <li><strong>C++98 strict</strong>, compilé <code>-Wall -Wextra -Werror</code>.</li>
+      <li><strong>Aucun fork, aucun thread.</strong> Un seul processus gère tous les clients.</li>
+      <li><strong>Un seul <code>poll()</code></strong> pour <em>toutes</em> les I/O — lire, écrire,
+        accepter. Un <code>recv</code> ou un <code>send</code> non gardé par <code>poll()</code>
+        est sanctionné à l'éval.</li>
+      <li><strong>Tous les fd non-bloquants</strong>, via <code>fcntl(fd, F_SETFL, O_NONBLOCK)</code>
+        et rien d'autre sur macOS.</li>
+      <li>Lancement : <code>./ircserv &lt;port&gt; &lt;password&gt;</code>.</li>
+    </ul>
+    <p>
+      Cette dernière contrainte est le cœur du projet : elle interdit d'attendre un client.
+      D'où toute l'architecture à buffers qui suit — on ne <em>lit</em> jamais un message
+      complet d'un coup, et on n'<em>écrit</em> jamais directement.
+    </p>
+  </div>
+</section>
+
+<!-- ============================================ §2 -->
+<section id="archi">
+  <div class="num">§2</div>
+  <div class="body">
+    <h2>Architecture : quatre classes, une boucle</h2>
+    <p>
+      Le code est organisé autour d'un <code>Server</code> propriétaire de tout : il possède les
+      <code>Client*</code>, les <code>Channel*</code>, et le tableau de <code>pollfd</code>.
+      <code>Message</code> est un simple parseur sans état. Les handlers de commandes sont des
+      méthodes de <code>Server</code> réparties dans <code>src/commands/</code>.
+    </p>
+
+    <div class="screen">
+      <div class="screen-bar"><span>Diagramme de classes</span><span>les méthodes de Server sont réparties sur 5 fichiers</span></div>
+      <div class="screen-body">
+<pre class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#161B21","primaryColor":"#1D242C","primaryTextColor":"#DDE3EA","primaryBorderColor":"#3C4652","lineColor":"#7C8896","secondaryColor":"#232B34","tertiaryColor":"#161B21","fontFamily":"ui-monospace, Menlo, monospace","fontSize":"13px","classText":"#DDE3EA"}}}%%
+classDiagram
+    class Server {
+        -unsigned _port
+        -string _password
+        -int _listenFd
+        -vector _pollfds
+        -vector _clients
+        -map _channels
+        -vector _toDisconnect
+        +run()
+        +setupSocket()
+        +acceptClient()
+        +handleClient(fd)
+        +dispatcher(client, msg)
+        +flushClient(fd)
+        +disconnectClient(fd)
+        +reply(client, text)
+    }
+    class Client {
+        -int _fd
+        -string _nickName
+        -string _userName
+        -bool _pass
+        -bool _registred
+        -string _inBuffer
+        -string _outBuffer
+        +appendToBuffer(data)
+        +appendToOutBuffer(data)
+    }
+    class Channel {
+        -string _name
+        -string _topic
+        -string _key
+        -size_t _limit
+        -bool _inviteOnly
+        -bool _topicRestricted
+        -vector _members
+        -vector _modos
+        -vector _invited
+        +addMember(client)
+        +isModo(client)
+        +broadcast(msg, except)
+        +getNamesList()
+    }
+    class Message {
+        +string command
+        +vector param
+        +parse(line) Message
+    }
+    Server "1" o-- "n" Client : possede et detruit
+    Server "1" o-- "n" Channel : possede et detruit
+    Channel "1" --> "n" Client : pointeurs empruntes
+    Server ..> Message : parse chaque ligne
+</pre>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Le point faible de ce schéma</strong>
+      <p>
+        <code>Channel</code> stocke des <code>Client*</code> <em>empruntés</em> au <code>Server</code>,
+        mais rien ne relie les deux durées de vie. Quand le serveur détruit un client, les salons
+        gardent le pointeur. C'est le bug n°2 en §8.
+      </p>
+    </div>
+
+    <h3>Répartition des fichiers</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Fichier</th><th class="num-col">Lignes</th><th>Rôle</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>src/main.cpp</td><td class="num-col">86</td><td class="desc">Parsing des arguments, handlers de signaux, lancement.</td></tr>
+          <tr><td>src/Server.cpp</td><td class="num-col">111</td><td class="desc">Destructeur, boucle <code>poll</code>, socket d'écoute. <em>Nouveau découpage.</em></td></tr>
+          <tr><td>src/ServerClient.cpp</td><td class="num-col">111</td><td class="desc">accept, recv, flush, déconnexion, <code>findClient</code>. <em>Nouveau fichier.</em></td></tr>
+          <tr><td>src/ServerDispatch.cpp</td><td class="num-col">26</td><td class="desc">Le dispatcher et <code>findChannel</code>. <em>Nouveau fichier — c'est ici qu'on branchera chaque commande.</em></td></tr>
+          <tr><td>src/Message.cpp</td><td class="num-col">37</td><td class="desc">Découpage d'une ligne en commande + paramètres.</td></tr>
+          <tr><td>src/Channel.cpp</td><td class="num-col">146</td><td class="desc">Membres, modos, invités, broadcast, liste des noms.</td></tr>
+          <tr><td>src/commands/Registration.cpp</td><td class="num-col">165</td><td class="desc">PASS, NICK, USER, validation du pseudo, messages de bienvenue.</td></tr>
+          <tr><td>src/commands/Join.cpp</td><td class="num-col">97</td><td class="desc">JOIN, contrôle d'accès au salon, réponses 353/366.</td></tr>
+          <tr><td>src/commands/Ping.cpp</td><td class="num-col">19</td><td class="desc">PING → PONG.</td></tr>
+          <tr><td><s>src/Client.cpp</s></td><td class="num-col">—</td><td class="desc">Supprimé (il était vide) — mais toujours listé dans le Makefile. <strong>C'est ce qui casse le build.</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ §3 -->
+<section id="flux">
+  <div class="num">§3</div>
+  <div class="body">
+    <h2>Le trajet d'un message, de l'octet à la réponse</h2>
+    <p>
+      C'est la logique centrale du projet, et elle est déjà correcte dans votre code.
+      Deux buffers par client font tout le travail : <code>_inBuffer</code> accumule les octets
+      reçus jusqu'à trouver un <code>CRLF</code>, <code>_outBuffer</code> accumule les réponses
+      jusqu'à ce que <code>poll</code> autorise l'écriture. Aucune I/O ne se fait hors de la boucle.
+    </p>
+
+    <div class="screen">
+      <div class="screen-bar"><span>Boucle principale</span><span>Server::run — src/Server.cpp:18</span></div>
+      <div class="screen-body">
+<pre class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#161B21","primaryColor":"#1D242C","primaryTextColor":"#DDE3EA","primaryBorderColor":"#3C4652","lineColor":"#7C8896","secondaryColor":"#232B34","tertiaryColor":"#161B21","fontFamily":"ui-monospace, Menlo, monospace","fontSize":"13px"}}}%%
+flowchart TD
+    A["Debut de tour : pour chaque client,<br/>events = POLLIN, plus POLLOUT si outBuffer non vide"] --> B{{"poll — bloque jusqu'a activite"}}
+    B -->|"revents sur le socket d'ecoute"| C["acceptClient : accept,<br/>fcntl O_NONBLOCK, new Client"]
+    B -->|"POLLIN sur un client"| D["recv dans un tampon de 512 octets"]
+    B -->|"POLLOUT sur un client"| E["flushClient : send outBuffer,<br/>puis efface les octets envoyes"]
+    B -->|"POLLHUP / POLLERR"| F["fd ajoute a _toDisconnect"]
+
+    D --> D0{"octets recus"}
+    D0 -->|"0 : client parti"| F
+    D0 -->|"greater than 0"| G["inBuffer += donnees"]
+    G --> H{"inBuffer contient CRLF ?"}
+    H -->|non| B
+    H -->|oui| I["extraire la ligne, effacer du buffer"]
+    I --> J["Message::parse — commande + parametres"]
+    J --> K["dispatcher : PASS NICK USER PING JOIN"]
+    K --> L["handler → reply : outBuffer += texte + CRLF"]
+    L --> H
+
+    C --> M["Fin de tour : disconnectClient<br/>pour chaque fd de _toDisconnect"]
+    E --> M
+    F --> M
+    M --> A
+
+    style B fill:#2C2517,stroke:#D9A441,color:#E8BC6A
+    style K fill:#2C2517,stroke:#D9A441,color:#E8BC6A
+    style D fill:#2E1B19,stroke:#E0776B,color:#E0776B
+</pre>
+      </div>
+    </div>
+
+    <p>
+      Deux détails à retenir. Le <strong>découpage différé des déconnexions</strong> (<code>_toDisconnect</code>,
+      vidé en fin de tour) évite de modifier <code>_pollfds</code> pendant qu'on l'itère — c'est bien vu.
+      Et la <strong>boucle <code>while</code> sur les <code>CRLF</code></strong> traite plusieurs commandes
+      arrivées dans un même paquet TCP, ce qui est exactement ce qu'irssi fait à la connexion.
+    </p>
+    <p>
+      Le nœud rouge sur le diagramme est le <code>recv</code> : c'est là que se trouve le crash n°1.
+    </p>
+  </div>
+</section>
+
+<!-- ============================================ §4 -->
+<section id="etats">
+  <div class="num">§4</div>
+  <div class="body">
+    <h2>La machine à états de l'enregistrement</h2>
+    <p>
+      Un client n'existe vraiment qu'une fois <em>enregistré</em>. Tant qu'il ne l'est pas,
+      il ne peut rien faire d'autre que fournir ses trois informations. Votre implémentation
+      appelle <code>checkRegister()</code> après chaque commande : dès que les trois conditions
+      sont réunies, la bascule se fait et les quatre messages de bienvenue partent.
+    </p>
+
+    <div class="screen">
+      <div class="screen-bar"><span>États du client</span><span>Server::checkRegister — Registration.cpp:20</span></div>
+      <div class="screen-body">
+<pre class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#161B21","primaryColor":"#1D242C","primaryTextColor":"#DDE3EA","primaryBorderColor":"#3C4652","lineColor":"#7C8896","secondaryColor":"#232B34","tertiaryColor":"#161B21","fontFamily":"ui-monospace, Menlo, monospace","fontSize":"13px"}}}%%
+stateDiagram-v2
+    [*] --> Connecte : accept
+    Connecte --> Connecte : PASS bon mot de passe → _pass = true
+    Connecte --> Connecte : NICK valide et libre → _nickName
+    Connecte --> Connecte : USER 4 parametres → _userName
+    Connecte --> Enregistre : les trois sont remplis
+    Enregistre --> Enregistre : PING, JOIN
+    Connecte --> [*] : recv 0 ou POLLHUP
+    Enregistre --> [*] : recv 0 ou POLLHUP
+
+    note right of Connecte
+        Erreurs emises :
+        461 parametre manquant
+        462 deja enregistre
+        464 mot de passe faux
+        431 pas de pseudo
+        432 pseudo invalide
+        433 pseudo deja pris
+    end note
+
+    note right of Enregistre
+        A l'entree, on envoie :
+        001 bienvenue
+        002 host et version
+        003 date de creation
+        004 modes supportes
+    end note
+</pre>
+      </div>
+    </div>
+
+    <p>
+      Il manque un garde-fou : <strong>rien n'empêche d'envoyer <code>NICK</code> avant
+      <code>PASS</code></strong>, ni de continuer à discuter après un mot de passe refusé.
+      Le RFC veut que <code>PASS</code> arrive en premier, et l'usage veut qu'un mot de passe
+      faux ferme la connexion. À corriger avant l'éval, c'est un test classique de correcteur.
+    </p>
+  </div>
+</section>
+
+<!-- ============================================ §5 -->
+<section id="join">
+  <div class="num">§5</div>
+  <div class="body">
+    <h2>Anatomie du JOIN — le modèle pour toutes les commandes suivantes</h2>
+    <p>
+      <code>handleJoin</code> est votre commande la plus aboutie, et c'est une bonne nouvelle :
+      elle établit le patron que <code>PRIVMSG</code>, <code>KICK</code>, <code>TOPIC</code> et
+      <code>MODE</code> vont réutiliser tel quel — vérifier l'enregistrement, vérifier les
+      paramètres, trouver la cible, vérifier les droits, agir, diffuser, répondre.
+    </p>
+
+    <div class="screen">
+      <div class="screen-bar"><span>Séquence JOIN</span><span>src/commands/Join.cpp</span></div>
+      <div class="screen-body">
+<pre class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#161B21","primaryColor":"#1D242C","primaryTextColor":"#DDE3EA","primaryBorderColor":"#3C4652","lineColor":"#7C8896","secondaryColor":"#232B34","tertiaryColor":"#161B21","actorBkg":"#232B34","actorTextColor":"#DDE3EA","actorLineColor":"#3C4652","signalColor":"#93A0AE","signalTextColor":"#DDE3EA","labelBoxBkgColor":"#2C2517","labelTextColor":"#E8BC6A","noteBkgColor":"#2C2517","noteTextColor":"#E8BC6A","noteBorderColor":"#D9A441","fontFamily":"ui-monospace, Menlo, monospace","fontSize":"12px"}}}%%
+sequenceDiagram
+    autonumber
+    participant B as bob
+    participant S as Server
+    participant C as Channel salon
+    participant A as alice deja membre
+
+    B->>S: JOIN salon cle
+    S->>S: enregistre ? sinon 451
+    S->>S: parametre present ? sinon 461
+    S->>S: nom commence par diese ? sinon 403
+    S->>S: findChannel("salon")
+    alt salon inexistant
+        S->>C: new Channel — le createur devient operateur
+    else salon existant
+        S->>S: checkJoin — invite only 473, cle 475, limite 471
+    end
+    S->>C: addMember(bob)
+    C-->>A: :bob!bob@localhost JOIN salon
+    C-->>B: :bob!bob@localhost JOIN salon
+    S-->>B: 332 sujet du salon, si defini
+    S-->>B: 353 liste des noms — arobase devant les operateurs
+    S-->>B: 366 fin de la liste
+</pre>
+      </div>
+    </div>
+
+    <p>Vérifié en conditions réelles avec deux clients simultanés — la sortie est exactement conforme :</p>
+
+    <div class="screen">
+      <div class="screen-bar"><span>Test réel · 2 clients</span><span>./ircserv 6667 pass</span></div>
+<pre class="term"><span class="c">[alice]</span> <span class="k">JOIN #chan</span>
+  :alice!alice@localhost JOIN #chan
+  :ircserv 353 alice = #chan <span class="g">:@alice</span>
+  :ircserv 366 alice #chan :End of /NAMES list
+
+<span class="c">[bob]</span> <span class="k">JOIN #chan</span>
+  :bob!bob@localhost JOIN #chan
+  :ircserv 353 bob = #chan <span class="g">:@alice bob</span>
+  :ircserv 366 bob #chan :End of /NAMES list
+
+<span class="c">[alice reçoit le broadcast]</span>
+  :bob!bob@localhost JOIN #chan   <span class="c">← alice est bien notifiée</span></pre>
+    </div>
+
+    <p>
+      Trois manques sur cette commande : la <strong>liste séparée par virgules</strong>
+      (<code>JOIN #a,#b cle1,cle2</code>, qu'irssi envoie quand on rejoint plusieurs salons),
+      les salons en <code>&amp;</code>, et le fait qu'un salon vide n'est jamais détruit —
+      ce dernier point ne se verra qu'une fois <code>PART</code> et <code>QUIT</code> écrits.
+    </p>
+  </div>
+</section>
+
+<!-- ============================================ §6 -->
+<section id="chemin">
+  <div class="num">§6</div>
+  <div class="body">
+    <h2>Le chemin parcouru</h2>
+    <p>
+      Six semaines, 38 commits, deux auteurs. La progression suit exactement la répartition
+      décidée en commentaire dans <code>main.cpp</code> : un binôme sur la couche réseau et le
+      cycle de vie des connexions, l'autre sur la logique du protocole.
+    </p>
+
+    <div class="timeline">
+      <div class="tl-row" data-done="yes">
+        <div class="tl-date">25 juin</div>
+        <div class="tl-body"><strong>Mise en place</strong><span>Dépôt, Makefile, arborescence des quatre classes.</span></div>
+      </div>
+      <div class="tl-row" data-done="yes">
+        <div class="tl-date">30 juin → 2 juil</div>
+        <div class="tl-body"><strong>Phase 1 — socket &amp; poll</strong><span>Vérification des arguments, plage de ports, socket d'écoute, boucle <code>poll</code>, accept.</span></div>
+      </div>
+      <div class="tl-row" data-done="yes">
+        <div class="tl-date">6 juil</div>
+        <div class="tl-body"><strong>Phase 2 — buffers &amp; parsing</strong><span>Buffer d'entrée par client, accumulation jusqu'au <code>CRLF</code>, classe <code>Message</code>, fonction <code>reply</code>, <code>PASS</code>. Fusion des deux branches.</span></div>
+      </div>
+      <div class="tl-row" data-done="yes">
+        <div class="tl-date">7 → 8 juil</div>
+        <div class="tl-body"><strong>NICK, USER, dispatcher, signaux</strong><span>Validation du pseudo, unicité, dispatcher central, SIGINT/SIGQUIT/SIGPIPE et arrêt propre.</span></div>
+      </div>
+      <div class="tl-row" data-done="yes">
+        <div class="tl-date">10 juil</div>
+        <div class="tl-body"><strong>Phase 3 — enregistrement complet</strong><span>Messages 001 à 004, buffer de sortie et écriture via <code>POLLOUT</code>, correction d'une fuite au Ctrl-C multi-clients.</span></div>
+      </div>
+      <div class="tl-row" data-done="yes">
+        <div class="tl-date">17 juil</div>
+        <div class="tl-body"><strong>PING / PONG</strong><span>Sans ça, irssi coupait la connexion pendant les tests.</span></div>
+      </div>
+      <div class="tl-row" data-done="yes">
+        <div class="tl-date">21 → 22 juil</div>
+        <div class="tl-body"><strong>Phase 4 — début du chat</strong><span>Classe <code>Channel</code> complète (membres, modos, invités, modes, broadcast), <code>JOIN</code> avec ses réponses, puis découpage en <code>checkJoin</code> / <code>joinReplies</code>.</span></div>
+      </div>
+      <div class="tl-row" data-done="yes">
+        <div class="tl-date">29 juil</div>
+        <div class="tl-body"><strong>Réorganisation des fichiers</strong><span><code>Server.cpp</code> scindé en trois, <code>Client.cpp</code> vide supprimé. Aucune logique modifiée — et le Makefile n'a pas suivi.</span></div>
+      </div>
+      <div class="tl-row">
+        <div class="tl-date">à venir</div>
+        <div class="tl-body"><strong>Phase 4 (suite) &amp; 5</strong><span>PRIVMSG, PART, QUIT, puis les commandes opérateur. Le plan en §9.</span></div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Le constat des trois dernières semaines</strong>
+      <p>
+        Entre le 22 juillet et aujourd'hui : deux commits, zéro commande gagnée, et un build cassé.
+        Le découpage de <code>Server.cpp</code> était utile — le fichier grossissait — mais il a
+        consommé le seul créneau de travail de la période. Le projet est à trois semaines de la
+        même position qu'au 22 juillet. C'est le vrai risque du dossier, plus que n'importe quel
+        bug technique : il reste une vingtaine d'heures de travail, et le rythme actuel ne les
+        absorbe pas.
+      </p>
+    </div>
+
+    <div class="callout">
+      <strong>Ce qui est notable</strong>
+      <p>
+        La classe <code>Channel</code> a été écrite <em>en avance</em> sur les commandes qui
+        l'utilisent : les modes <code>i</code>, <code>t</code>, <code>k</code>, <code>l</code>,
+        la liste d'invités et la gestion des opérateurs sont déjà là et testés par <code>JOIN</code>.
+        Toute la phase 5 consiste donc surtout à câbler des commandes sur du code qui existe déjà —
+        c'est beaucoup moins de travail que ne le suggère la liste.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ §7 -->
+<section id="etat">
+  <div class="num">§7</div>
+  <div class="body">
+    <h2>Où on en est, précisément</h2>
+
+    <div class="meters">
+      <div class="meter">
+        <span class="meter-label">Socket &amp; poll</span>
+        <div class="meter-track"><div class="meter-fill" data-tone="good" style="width:90%"></div></div>
+        <span class="meter-val">90 %</span>
+      </div>
+      <div class="meter">
+        <span class="meter-label">Buffers &amp; parsing</span>
+        <div class="meter-track"><div class="meter-fill" data-tone="good" style="width:75%"></div></div>
+        <span class="meter-val">75 %</span>
+      </div>
+      <div class="meter">
+        <span class="meter-label">Enregistrement</span>
+        <div class="meter-track"><div class="meter-fill" data-tone="good" style="width:85%"></div></div>
+        <span class="meter-val">85 %</span>
+      </div>
+      <div class="meter">
+        <span class="meter-label">Chat de base</span>
+        <div class="meter-track"><div class="meter-fill" style="width:25%"></div></div>
+        <span class="meter-val">25 %</span>
+      </div>
+      <div class="meter">
+        <span class="meter-label">Commandes opérateur</span>
+        <div class="meter-track"><div class="meter-fill" data-tone="todo" style="width:8%"></div></div>
+        <span class="meter-val">8 %</span>
+      </div>
+      <div class="meter">
+        <span class="meter-label">Robustesse &amp; mémoire</span>
+        <div class="meter-track"><div class="meter-fill" data-tone="todo" style="width:30%"></div></div>
+        <span class="meter-val">30 %</span>
+      </div>
+    </div>
+    <p>
+      Le socle « infrastructure » est solide et représente la partie la plus difficile à déboguer ;
+      la phase opérateur, bien que longue en nombre de lignes, s'appuie sur une classe
+      <code>Channel</code> déjà complète.
+    </p>
+
+    <h3>Commandes</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Commande</th><th>État</th><th>Détail</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>PASS</td><td><span class="chip part">partiel</span></td><td class="desc">Fonctionne, mais format d'erreur non conforme et pas de déconnexion si le mot de passe est faux.</td></tr>
+          <tr><td>NICK</td><td><span class="chip part">partiel</span></td><td class="desc">Validation et unicité OK. Manque : le changement en cours de session (broadcast), la limite de 9 caractères, la comparaison insensible à la casse.</td></tr>
+          <tr><td>USER</td><td><span class="chip part">partiel</span></td><td class="desc">Stocke le username. Le <em>realname</em> (paramètre trailing) est ignoré — il faudra pour <code>WHOIS</code>.</td></tr>
+          <tr><td>PING / PONG</td><td><span class="chip ok">fait</span></td><td class="desc">Testé, irssi reste connecté. Format de la réponse à préfixer par <code>:ircserv</code>.</td></tr>
+          <tr><td>JOIN</td><td><span class="chip ok">fait</span></td><td class="desc">Création, opérateur automatique, modes +i/+k/+l respectés, 353/366. Manque la liste par virgules.</td></tr>
+          <tr><td>PRIVMSG</td><td><span class="chip todo">à faire</span></td><td class="desc">La commande la plus importante qui manque. Sans elle, le serveur ne sert pas encore à discuter.</td></tr>
+          <tr><td>PART</td><td><span class="chip todo">à faire</span></td><td class="desc">Doit aussi détruire les salons devenus vides.</td></tr>
+          <tr><td>QUIT</td><td><span class="chip todo">à faire</span></td><td class="desc">Prérequis pour corriger le bug n°2 proprement.</td></tr>
+          <tr><td>KICK</td><td><span class="chip todo">à faire</span></td><td class="desc">Opérateur uniquement, sinon 482. <code>isModo</code> existe déjà.</td></tr>
+          <tr><td>INVITE</td><td><span class="chip todo">à faire</span></td><td class="desc"><code>addInvite</code> / <code>isInvited</code> existent déjà et sont utilisés par JOIN.</td></tr>
+          <tr><td>TOPIC</td><td><span class="chip todo">à faire</span></td><td class="desc">Getter/setter présents, mode <code>+t</code> déjà modélisé.</td></tr>
+          <tr><td>MODE i t k o l</td><td><span class="chip todo">à faire</span></td><td class="desc">Tous les champs et setters existent dans <code>Channel</code> ; il reste à écrire le parsing des flags.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Infrastructure</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Élément</th><th>État</th><th>Détail</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Makefile</td><td><span class="chip bug">bug</span></td><td class="desc">Règles correctes, mais <code>SRCS</code> liste <code>src/Client.cpp</code> qui n'existe plus. <code>make</code> s'arrête.</td></tr>
+          <tr><td>Compilation</td><td><span class="chip bug">bug</span></td><td class="desc">Échoue. Une fois la ligne retirée, tout compile sans un seul avertissement en <code>-Wall -Wextra -Werror</code> — vérifié.</td></tr>
+          <tr><td>poll unique</td><td><span class="chip part">partiel</span></td><td class="desc">Toute la boucle est conforme. Seule exception : le <code>send</code> d'adieu dans le destructeur, hors <code>poll</code>.</td></tr>
+          <tr><td>fd non-bloquants</td><td><span class="chip ok">fait</span></td><td class="desc">Écoute et clients acceptés passent par <code>fcntl(F_SETFL, O_NONBLOCK)</code>.</td></tr>
+          <tr><td>Signaux</td><td><span class="chip ok">fait</span></td><td class="desc">SIGINT et SIGQUIT arrêtent proprement, SIGPIPE ignoré, <code>EINTR</code> géré dans <code>poll</code>.</td></tr>
+          <tr><td>Gestion mémoire</td><td><span class="chip bug">bug</span></td><td class="desc">Pointeurs pendants entre <code>Server</code> et <code>Channel</code>. Voir §8.</td></tr>
+          <tr><td>Robustesse entrée</td><td><span class="chip bug">bug</span></td><td class="desc">Dépassement de tampon sur une ligne de 512 octets. Voir §8.</td></tr>
+          <tr><td>README</td><td><span class="chip todo">à faire</span></td><td class="desc">Encore un squelette avec des « … ». À remplir avant l'éval, en nommant le client de référence.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ §8 -->
+<section id="bugs">
+  <div class="num">§8</div>
+  <div class="body">
+    <h2>Les bugs, par ordre d'urgence</h2>
+    <p>
+      Les trois premiers ont été <strong>reproduits en lançant votre binaire</strong>, pas déduits
+      de la lecture. Ce sont les seuls qui peuvent coûter la note à l'évaluation. Le refactoring
+      du 29 juillet a déplacé le code sans en changer une ligne : tous les diagnostics de la
+      révision précédente restent valables, seules les positions ont bougé.
+    </p>
+
+    <div class="bugs">
+
+      <article class="bug" data-sev="crit">
+        <div class="bug-head">
+          <span class="chip bug">bloquant</span>
+          <h4>Le Makefile référence un fichier supprimé</h4>
+          <span class="bug-loc">Makefile:7</span>
+        </div>
+        <p>
+          Le merge a supprimé <code>src/Client.cpp</code> sans mettre à jour <code>SRCS</code>.
+          Personne ne peut compiler tant que ce n'est pas corrigé — donc personne ne peut avancer.
+          À faire en premier, avant même de lire le reste de cette page.
+        </p>
+        <div class="screen">
+          <div class="screen-bar"><span>Reproduction</span><span>make re</span></div>
+<pre class="term"><span class="c">$</span> make re
+  c++ … -c src/main.cpp -o obj/src/main.o
+  c++ … -c src/Server.cpp -o obj/src/Server.o
+  <span class="r">make: *** No rule to make target `obj/src/Client.o', needed by `ircserv'. Stop.</span></pre>
+        </div>
+        <div class="fix">- SRCS = src/main.cpp src/Server.cpp src/Client.cpp src/Channel.cpp src/Message.cpp \
++ SRCS = src/main.cpp src/Server.cpp src/Channel.cpp src/Message.cpp \</div>
+      </article>
+
+      <article class="bug" data-sev="crit">
+        <div class="bug-head">
+          <span class="chip bug">critique</span>
+          <h4>Dépassement de tampon sur une ligne de 512 octets</h4>
+          <span class="bug-loc">src/ServerClient.cpp:30–50</span>
+        </div>
+        <p>
+          <code>recv</code> peut remplir les 512 cases du tampon, puis
+          <code>recvBuffer[bytesReceived] = '\0'</code> écrit à l'indice 512 — une case après la fin.
+          Le serveur meurt sur <em>stack smashing</em>. Or 512 octets est précisément la taille
+          maximale d'un message IRC : ce n'est pas un cas tordu, c'est une entrée légale.
+        </p>
+        <div class="screen">
+          <div class="screen-bar"><span>Reproduction</span><span>SIGABRT · code de sortie 134</span></div>
+<pre class="term"><span class="c">$</span> ./ircserv 6667 pass &amp;
+<span class="c">$</span> python3 -c "…envoie 'NICK ' + 'z'*505 + CRLF  → 512 octets"
+  recv: b''                       <span class="c">← le serveur a fermé</span>
+  <span class="r">&gt;&gt;&gt; SERVER CRASHED — exit code 134 (abort)</span></pre>
+        </div>
+        <div class="fix">- int bytesReceived = recv(fd, recvBuffer, sizeof(recvBuffer), 0);
++ int bytesReceived = recv(fd, recvBuffer, sizeof(recvBuffer) - 1, 0);</div>
+      </article>
+
+      <article class="bug" data-sev="crit">
+        <div class="bug-head">
+          <span class="chip bug">critique</span>
+          <h4>Pointeurs pendants : un client détruit reste membre de ses salons</h4>
+          <span class="bug-loc">src/ServerClient.cpp:80 · Channel.cpp:123</span>
+        </div>
+        <p>
+          <code>disconnectClient</code> fait <code>delete _clients[i]</code> sans jamais retirer
+          ce client des salons qu'il avait rejoints. <code>Channel::_members</code> garde donc un
+          pointeur vers de la mémoire libérée, et le prochain <code>broadcast</code> écrit dedans.
+          Pire : le client suivant est souvent alloué à la <em>même adresse</em>, donc
+          <code>isMember()</code> le croit déjà présent et son JOIN est silencieusement ignoré.
+        </p>
+        <div class="screen">
+          <div class="screen-bar"><span>Reproduction</span><span>alice rejoint, part, bob rejoint</span></div>
+<pre class="term"><span class="c">[alice]</span> JOIN #test  → <span class="g">353 = #test :@alice</span>  puis alice se déconnecte
+<span class="c">[bob]</span>   JOIN #test  → <span class="r">aucune réponse. Pas de JOIN, pas de 353, pas de 366.</span>
+                     <span class="c">bob est invisible dans un salon qu'il croit avoir rejoint</span></pre>
+        </div>
+        <div class="fix">// dans disconnectClient, AVANT le delete :
+for (map&lt;string,Channel*&gt;::iterator it = _channels.begin(); it != _channels.end(); ++it)
+    it-&gt;second-&gt;removeMember(client);   // removeMember retire déjà le statut modo</div>
+      </article>
+
+      <article class="bug" data-sev="med">
+        <div class="bug-head">
+          <span class="chip bug">moyen</span>
+          <h4>Un même fd peut être déconnecté deux fois</h4>
+          <span class="bug-loc">src/Server.cpp:52–55 · ServerClient.cpp:37, 42</span>
+        </div>
+        <p>
+          <code>POLLHUP</code> et un <code>recv</code> à zéro peuvent pousser le même fd deux fois
+          dans <code>_toDisconnect</code> au cours du même tour. Le second <code>close()</code>
+          porte alors sur un descripteur déjà fermé — que le noyau a pu réattribuer entre-temps
+          à une nouvelle connexion, qu'on ferme donc par erreur.
+        </p>
+        <div class="fix">// vérifier l'absence avant d'ajouter, ou dédupliquer avant la boucle finale
+if (std::find(_toDisconnect.begin(), _toDisconnect.end(), fd) == _toDisconnect.end())
+    _toDisconnect.push_back(fd);</div>
+      </article>
+
+      <article class="bug" data-sev="med">
+        <div class="bug-head">
+          <span class="chip bug">moyen</span>
+          <h4>Un échec de <code>setupSocket</code> n'arrête pas le serveur</h4>
+          <span class="bug-loc">src/Server.cpp:83–111</span>
+        </div>
+        <p>
+          En cas d'échec de <code>socket</code>, <code>bind</code> ou <code>listen</code>, la fonction
+          se contente d'un <code>return</code>. <code>run()</code> enchaîne ensuite sur
+          <code>poll()</code> avec un <code>_listenFd</code> invalide ou non initialisé, et boucle
+          dans le vide. Le cas se produit dès qu'on relance le serveur sur un port occupé.
+        </p>
+        <div class="fix">// faire remonter l'échec : bool setupSocket(), ou lever une exception,
+// et sortir de run() immédiatement.</div>
+      </article>
+
+      <article class="bug" data-sev="med">
+        <div class="bug-head">
+          <span class="chip bug">moyen</span>
+          <h4>Format des messages d'erreur non conforme</h4>
+          <span class="bug-loc">Registration.cpp:89, 95, 102, 116 · Ping.cpp:12</span>
+        </div>
+        <p>
+          <code>JOIN</code> émet le bon format, mais <code>PASS</code>, <code>NICK</code> et
+          <code>PING</code> renvoient encore <code>"461: Empty parameter"</code>. Un vrai client
+          ne sait pas interpréter ça — il faut le préfixe serveur et le pseudo destinataire.
+          Le <code>todo.md</code> coche cette tâche, mais elle n'est faite qu'à moitié.
+        </p>
+        <div class="fix">- reply(client, "461: Empty parameter");
++ reply(client, ":ircserv 461 " + nick + " PASS :Not enough parameters");</div>
+      </article>
+
+      <article class="bug" data-sev="low">
+        <div class="bug-head">
+          <span class="chip bug">mineur</span>
+          <h4>Commandes sensibles à la casse</h4>
+          <span class="bug-loc">src/Message.cpp:12</span>
+        </div>
+        <p>
+          Le RFC impose des commandes insensibles à la casse. <code>join #x</code> en minuscules
+          est aujourd'hui ignoré sans le moindre message — vérifié à l'exécution. Le parseur
+          ne gère pas non plus le préfixe optionnel (<code>:nick!user@host CMD …</code>).
+        </p>
+        <div class="fix">// après extraction de msg.command :
+for (size_t i = 0; i &lt; msg.command.size(); ++i)
+    msg.command[i] = std::toupper(msg.command[i]);</div>
+      </article>
+
+      <article class="bug" data-sev="low">
+        <div class="bug-head">
+          <span class="chip bug">mineur</span>
+          <h4>Divers — à nettoyer avant de rendre</h4>
+          <span class="bug-loc">plusieurs fichiers</span>
+        </div>
+        <ul>
+          <li><code>getPassword()</code>, <code>getPort()</code>, <code>getListenFd()</code> sont
+            déclarés dans <code>Server.hpp:33–35</code> mais jamais définis : erreur de link au
+            premier appel. Les supprimer ou les écrire. <em>Toujours présent après le refactor.</em></li>
+          <li><code>flushClient</code> (<code>ServerClient.cpp:63</code>) ignore l'échec de
+            <code>send</code> : le client devrait être mis en déconnexion.</li>
+          <li>Le destructeur de <code>Server</code> (<code>Server.cpp:9</code>) appelle
+            <code>send()</code> hors de <code>poll()</code> — techniquement contraire au sujet.</li>
+          <li>Aucune réponse <code>421 Unknown command</code> pour une commande inconnue.</li>
+          <li>Les salons ne sont détruits qu'à l'arrêt du serveur, jamais quand ils se vident.</li>
+        </ul>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ §9 -->
+<section id="reste">
+  <div class="num">§9</div>
+  <div class="body">
+    <h2>Plan d'action pour finir le projet</h2>
+    <p>
+      Cinq lots, dans cet ordre. Les deux premiers sont <strong>séquentiels et non négociables</strong> :
+      ils débloquent la compilation et posent les fondations que toutes les commandes suivantes
+      vont réutiliser. Les lots 2 et 3 se parallélisent entre les deux binômes. Le lot 4 se fait
+      à nouveau ensemble, juste avant de rendre.
+    </p>
+
+    <div class="callout">
+      <strong>La règle d'ordre à ne pas enfreindre</strong>
+      <p>
+        N'écrivez pas <code>PRIVMSG</code> avant le lot 1. Sans <code>sendNumeric</code>, chaque
+        commande fabrique ses préfixes à la main — c'est exactement comme ça que PASS, NICK et
+        PING se sont retrouvés avec un format non conforme pendant que JOIN avait le bon. À sept
+        commandes restantes, ça fait une quarantaine de chaînes à réécrire une par une. Une heure
+        investie maintenant en économise quatre plus tard.
+      </p>
+    </div>
+
+    <div class="lots">
+
+      <article class="lot" data-urg="now">
+        <div class="lot-head">
+          <span class="chip bug">bloquant</span>
+          <h4>Lot 0 — Remettre le projet en état de marche</h4>
+          <span class="lot-cost">45 min · à deux</span>
+        </div>
+        <div class="lot-why">
+          <p>
+            Tant que ce lot n'est pas poussé, personne ne compile et les tests des deux binômes
+            sont impossibles. C'est la première chose à faire, aujourd'hui, avant tout le reste.
+          </p>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-n">0.1</div>
+            <div class="step-txt"><strong>Retirer <code>src/Client.cpp</code> du Makefile</strong><span>Une ligne. Vérifié : c'est le seul obstacle, le reste compile sans warning.</span></div>
+            <div class="step-cost">2 min</div>
+          </div>
+          <div class="step">
+            <div class="step-n">0.2</div>
+            <div class="step-txt"><strong>Corriger le dépassement de tampon</strong><span><code>sizeof(recvBuffer) - 1</code> dans <code>handleClient</code>. Sans ça, tout message de 512 octets tue le serveur.</span></div>
+            <div class="step-cost">5 min</div>
+          </div>
+          <div class="step">
+            <div class="step-n">0.3</div>
+            <div class="step-txt"><strong>Retirer le client de ses salons à la déconnexion</strong><span>Boucle sur <code>_channels</code> dans <code>disconnectClient</code>, avant le <code>delete</code>. Prérequis absolu de tout le lot 2.</span></div>
+            <div class="step-cost">20 min</div>
+          </div>
+          <div class="step">
+            <div class="step-n">0.4</div>
+            <div class="step-txt"><strong>Rejouer les deux scénarios de crash</strong><span>Ligne de 512 octets, puis alice rejoint / part / bob rejoint. Les deux doivent passer.</span></div>
+            <div class="step-cost">15 min</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="lot" data-urg="base">
+        <div class="lot-head">
+          <span class="chip part">fondation</span>
+          <h4>Lot 1 — Le socle protocole, écrit une fois pour toutes</h4>
+          <span class="lot-cost">4 h · à deux, en pair</span>
+        </div>
+        <div class="lot-why">
+          <p>
+            Tout ce que les sept commandes restantes vont appeler en boucle. À écrire ensemble
+            pour que les deux binômes partent avec les mêmes conventions — c'est le point de
+            synchronisation le plus rentable du projet.
+          </p>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-n">1.1</div>
+            <div class="step-txt"><strong><code>sendNumeric(client, code, params, trailing)</code></strong><span>Construit <code>:ircserv &lt;code&gt; &lt;nick&gt; &lt;params&gt; :&lt;trailing&gt;</code>. Puis migrer PASS, NICK, USER, PING dessus — le format non conforme disparaît d'un coup.</span></div>
+            <div class="step-cost">1 h 30</div>
+          </div>
+          <div class="step">
+            <div class="step-n">1.2</div>
+            <div class="step-txt"><strong>Sortir <code>buildPrefix</code> de Join.cpp</strong><span>Actuellement <code>static</code> dans un seul fichier. PRIVMSG, PART, QUIT, KICK, NICK et TOPIC en ont tous besoin.</span></div>
+            <div class="step-cost">15 min</div>
+          </div>
+          <div class="step">
+            <div class="step-n">1.3</div>
+            <div class="step-txt"><strong>Commandes insensibles à la casse</strong><span><code>toupper</code> sur <code>msg.command</code> dans <code>Message::parse</code>, et gérer le préfixe optionnel en tête de ligne.</span></div>
+            <div class="step-cost">30 min</div>
+          </div>
+          <div class="step">
+            <div class="step-n">1.4</div>
+            <div class="step-txt"><strong><code>findClientByNick(nick)</code></strong><span>Pendant de <code>findClient(fd)</code>, insensible à la casse. Nécessaire à PRIVMSG, KICK, INVITE et MODE +o.</span></div>
+            <div class="step-cost">20 min</div>
+          </div>
+          <div class="step">
+            <div class="step-n">1.5</div>
+            <div class="step-txt"><strong>Discipline d'enregistrement</strong><span>Exiger PASS avant NICK/USER, fermer la connexion sur mot de passe faux, répondre 451 à toute commande envoyée avant enregistrement, 421 pour une commande inconnue.</span></div>
+            <div class="step-cost">1 h</div>
+          </div>
+          <div class="step">
+            <div class="step-n">1.6</div>
+            <div class="step-txt"><strong><code>getChannelsOf(client)</code></strong><span>Les salons d'un client. Utilisé par QUIT, par le NICK en session et par la correction 0.3 qu'il factorise.</span></div>
+            <div class="step-cost">25 min</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="lot">
+        <div class="lot-head">
+          <span class="chip todo">phase 4</span>
+          <h4>Lot 2 — Le chat devient utilisable</h4>
+          <span class="lot-cost">5 h 30 · binôme A</span>
+        </div>
+        <div class="lot-why">
+          <p>
+            À la fin de ce lot, deux irssi peuvent discuter dans un salon, en sortir et se
+            déconnecter proprement. C'est le jalon qui compte : le serveur fait enfin son métier.
+          </p>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-n">2.1</div>
+            <div class="step-txt"><strong>PRIVMSG</strong><span>Vers un salon (broadcast à tous <em>sauf</em> l'émetteur) et vers un utilisateur. Erreurs 401, 403, 404, 411, 412. NOTICE se déduit en dix lignes : même logique, sans aucune réponse d'erreur.</span></div>
+            <div class="step-cost">2 h</div>
+          </div>
+          <div class="step">
+            <div class="step-n">2.2</div>
+            <div class="step-txt"><strong>PART</strong><span>Diffuser le départ aux membres, retirer le client, <strong>détruire le salon s'il devient vide</strong> (sinon les modes et la liste d'invités survivent au salon).</span></div>
+            <div class="step-cost">1 h</div>
+          </div>
+          <div class="step">
+            <div class="step-n">2.3</div>
+            <div class="step-txt"><strong>QUIT</strong><span>Diffuser à tous les salons du client, puis mettre le fd dans <code>_toDisconnect</code> — jamais le fermer depuis le handler.</span></div>
+            <div class="step-cost">1 h</div>
+          </div>
+          <div class="step">
+            <div class="step-n">2.4</div>
+            <div class="step-txt"><strong>NICK en cours de session</strong><span>Diffuser le changement à tous les salons du client, une seule fois par destinataire même s'il partage plusieurs salons. Plus la limite de 9 caractères et l'unicité insensible à la casse.</span></div>
+            <div class="step-cost">1 h 30</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="lot">
+        <div class="lot-head">
+          <span class="chip todo">phase 5</span>
+          <h4>Lot 3 — Les commandes opérateur</h4>
+          <span class="lot-cost">6 h · binôme B</span>
+        </div>
+        <div class="lot-why">
+          <p>
+            Bonne nouvelle : <code>Channel</code> expose déjà <code>isModo</code>,
+            <code>addInvite</code>, <code>setTopic</code>, <code>setKey</code>,
+            <code>setLimit</code> et <code>setInviteOnly</code>, et JOIN les utilise déjà.
+            Ce lot consiste surtout à câbler des commandes sur du code testé.
+          </p>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-n">3.1</div>
+            <div class="step-txt"><strong>TOPIC</strong><span>Sans argument : afficher (332, ou 331 si vide). Avec : modifier, en refusant les non-opérateurs si le mode <code>+t</code> est actif.</span></div>
+            <div class="step-cost">1 h</div>
+          </div>
+          <div class="step">
+            <div class="step-n">3.2</div>
+            <div class="step-txt"><strong>KICK</strong><span>Opérateur uniquement (482 sinon), 441 si la cible n'est pas dans le salon. Diffuser <em>avant</em> de retirer le membre, sinon l'exclu ne reçoit pas sa propre exclusion.</span></div>
+            <div class="step-cost">1 h 15</div>
+          </div>
+          <div class="step">
+            <div class="step-n">3.3</div>
+            <div class="step-txt"><strong>INVITE</strong><span>Réponses 341 à l'émetteur et INVITE à la cible. <code>addInvite</code> existe et est déjà consommé par <code>checkJoin</code>.</span></div>
+            <div class="step-cost">45 min</div>
+          </div>
+          <div class="step">
+            <div class="step-n">3.4</div>
+            <div class="step-txt"><strong>MODE — i, t, k, o, l</strong><span>Le seul vrai morceau restant. Parser une suite de flags avec ses <code>+</code>/<code>-</code> et ses arguments positionnels : <code>MODE #x +ok bob secret</code> consomme deux arguments, <code>+it</code> aucun. Diffuser le changement au salon.</span></div>
+            <div class="step-cost">3 h</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="lot" data-urg="build">
+        <div class="lot-head">
+          <span class="chip todo">avant l'éval</span>
+          <h4>Lot 4 — Durcissement et rendu</h4>
+          <span class="lot-cost">4 h · à deux</span>
+        </div>
+        <div class="lot-why">
+          <p>
+            Les points que le correcteur ira chercher volontairement, plus tout ce qui est resté
+            en suspens. Aucun ne prend plus de trente minutes isolément.
+          </p>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-n">4.1</div>
+            <div class="step-txt"><strong>Dédupliquer <code>_toDisconnect</code></strong><span>Sinon un <code>close()</code> peut porter sur un fd déjà réattribué à un autre client.</span></div>
+            <div class="step-cost">20 min</div>
+          </div>
+          <div class="step">
+            <div class="step-n">4.2</div>
+            <div class="step-txt"><strong>Rendre l'échec de <code>setupSocket</code> fatal</strong><span>Se déclenche dès qu'on relance sur un port occupé — le correcteur le fera.</span></div>
+            <div class="step-cost">20 min</div>
+          </div>
+          <div class="step">
+            <div class="step-n">4.3</div>
+            <div class="step-txt"><strong><code>flushClient</code> : déconnecter sur échec de <code>send</code></strong><span>Aujourd'hui l'erreur est affichée puis ignorée, et le client reste dans la liste.</span></div>
+            <div class="step-cost">15 min</div>
+          </div>
+          <div class="step">
+            <div class="step-n">4.4</div>
+            <div class="step-txt"><strong>Supprimer le <code>send()</code> du destructeur</strong><span>Seule I/O du projet hors <code>poll()</code>. Sur le papier, c'est sanctionnable.</span></div>
+            <div class="step-cost">15 min</div>
+          </div>
+          <div class="step">
+            <div class="step-n">4.5</div>
+            <div class="step-txt"><strong>Supprimer les getters fantômes</strong><span><code>getPassword</code>, <code>getPort</code>, <code>getListenFd</code> déclarés mais jamais définis dans <code>Server.hpp:33–35</code>.</span></div>
+            <div class="step-cost">10 min</div>
+          </div>
+          <div class="step">
+            <div class="step-n">4.6</div>
+            <div class="step-txt"><strong>Passe valgrind</strong><span>Connexion, JOIN, PRIVMSG, PART, QUIT, puis Ctrl-C avec trois clients connectés. Zéro bloc perdu.</span></div>
+            <div class="step-cost">1 h</div>
+          </div>
+          <div class="step">
+            <div class="step-n">4.7</div>
+            <div class="step-txt"><strong>README</strong><span>Encore un squelette avec des « … ». Nommer le client de référence (irssi), la commande de lancement et les commandes supportées.</span></div>
+            <div class="step-cost">45 min</div>
+          </div>
+          <div class="step">
+            <div class="step-n">4.8</div>
+            <div class="step-txt"><strong>Répétition de la soutenance</strong><span>Dérouler la checklist ci-dessous en conditions réelles, à trois clients irssi.</span></div>
+            <div class="step-cost">45 min</div>
+          </div>
+        </div>
+      </article>
+
+    </div>
+
+    <h3>Séquençage et parallélisation</h3>
+    <p>
+      Les lots 0 et 1 sont communs et bloquants. Une fois passés, les deux binômes travaillent
+      en parallèle sur des fichiers disjoints — <code>src/commands/</code> gagne un fichier par
+      commande, et <code>ServerDispatch.cpp</code> est le seul point de contact.
+    </p>
+
+    <div class="screen">
+      <div class="screen-bar"><span>Planning</span><span>2 personnes · environ 20 h au total</span></div>
+      <div class="screen-body">
+<pre class="mermaid">
+%%{init:{"theme":"base","themeVariables":{"background":"#161B21","primaryColor":"#1D242C","primaryTextColor":"#DDE3EA","primaryBorderColor":"#3C4652","lineColor":"#7C8896","secondaryColor":"#232B34","tertiaryColor":"#161B21","fontFamily":"ui-monospace, Menlo, monospace","fontSize":"12px","taskTextColor":"#DDE3EA","taskTextOutsideColor":"#DDE3EA","sectionBkgColor":"#1D242C","altSectionBkgColor":"#161B21","gridColor":"#2E3742","todayLineColor":"#D9A441"}}}%%
+gantt
+    dateFormat YYYY-MM-DD
+    axisFormat %d/%m
+    title Chemin critique jusqu'au rendu
+
+    section Commun
+    Lot 0 debloquer le build      :crit, l0, 2026-08-11, 1d
+    Lot 1 socle protocole         :active, l1, after l0, 2d
+
+    section Binome A
+    PRIVMSG et NOTICE             :a1, after l1, 2d
+    PART et QUIT                  :a2, after a1, 1d
+    NICK en session               :a3, after a2, 1d
+
+    section Binome B
+    TOPIC                         :b1, after l1, 1d
+    KICK et INVITE                :b2, after b1, 1d
+    MODE i t k o l                :b3, after b2, 2d
+
+    section Rendu
+    Lot 4 durcissement            :crit, l4, after a3 b3, 2d
+    Tests irssi et README         :l5, after l4, 1d
+</pre>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Binôme</th><th>Périmètre</th><th>Fichiers</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>A — protocole</td>
+            <td class="desc">PRIVMSG, NOTICE, PART, QUIT, NICK en session. Le cycle de vie d'un membre dans un salon.</td>
+            <td>src/commands/Privmsg.cpp<br>src/commands/PartQuit.cpp<br>Registration.cpp</td>
+          </tr>
+          <tr>
+            <td>B — opérateur</td>
+            <td class="desc">TOPIC, KICK, INVITE, MODE. Tout ce qui vérifie <code>isModo</code> avant d'agir.</td>
+            <td>src/commands/Topic.cpp<br>src/commands/Kick.cpp<br>src/commands/Mode.cpp</td>
+          </tr>
+          <tr>
+            <td>Commun</td>
+            <td class="desc">Lots 0, 1 et 4. À faire en pair, pas en parallèle.</td>
+            <td>Makefile, Server.hpp<br>ServerDispatch.cpp<br>ServerClient.cpp</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Le patron de chaque commande</h3>
+    <p>
+      <code>handleJoin</code> a déjà établi la forme. Reprendre ces sept étapes dans cet ordre
+      pour chaque nouvelle commande évite d'oublier une réponse d'erreur — c'est exactement
+      ce que le correcteur teste.
+    </p>
+    <ul class="dod">
+      <li><b>451</b> — le client est-il enregistré ?</li>
+      <li><b>461</b> — a-t-on assez de paramètres ?</li>
+      <li><b>401 / 403</b> — la cible existe-t-elle (utilisateur, salon) ?</li>
+      <li><b>442 / 482</b> — l'émetteur est-il membre, et opérateur si l'action l'exige ?</li>
+      <li>Agir sur l'état — <code>Channel</code> ou <code>Client</code>.</li>
+      <li>Diffuser aux concernés, en n'oubliant pas l'émetteur quand il doit se voir agir.</li>
+      <li>Répondre à l'émetteur, puis tester à deux clients irssi avant de commit.</li>
+    </ul>
+
+    <h3>Checklist avant de rendre</h3>
+    <ul class="dod">
+      <li><b>make re</b> passe sans un seul avertissement, deux fois de suite.</li>
+      <li>Aucun relink : un <code>make</code> immédiatement après un <code>make</code> ne fait rien.</li>
+      <li>Trois clients irssi connectés simultanément discutent dans le même salon.</li>
+      <li>Un client tué brutalement (<code>kill -9</code>) ne fait pas tomber le serveur ni les autres.</li>
+      <li>Une commande envoyée en deux morceaux avec une pause au milieu est traitée correctement.</li>
+      <li>Un message de 512 octets ne fait pas tomber le serveur.</li>
+      <li>Un mot de passe faux refuse la connexion.</li>
+      <li>Chaque mode — <code>i</code>, <code>t</code>, <code>k</code>, <code>o</code>, <code>l</code> — est démontrable en direct.</li>
+      <li>Un non-opérateur qui tente KICK reçoit bien 482.</li>
+      <li>Ctrl-C ferme tous les descripteurs, valgrind ne signale aucun bloc perdu.</li>
+      <li>Le README nomme le client de référence et la commande de lancement.</li>
+    </ul>
+
+    <h3>Comment tester pendant le développement</h3>
+    <div class="screen">
+      <div class="screen-bar"><span>Boucle de test</span><span>terminal</span></div>
+<pre class="term"><span class="c"># compiler et lancer</span>
+make re &amp;&amp; ./ircserv 6667 pass
+
+<span class="c"># client de référence — c'est avec lui que l'éval se fera</span>
+irssi -c 127.0.0.1 -p 6667 -w pass
+
+<span class="c"># test brut : attention, netcat envoie \n seul, votre serveur exige \r\n</span>
+printf 'PASS pass\r\nNICK a\r\nUSER a 0 * :A\r\nJOIN #x\r\n' | nc -c 127.0.0.1 6667
+
+<span class="c"># fragmentation : le message doit quand même être reconnu</span>
+printf 'PASS pa' ; sleep 1 ; printf 'ss\r\n'
+
+<span class="c"># la ligne de 512 octets qui fait tomber le serveur aujourd'hui</span>
+python3 -c "import socket;s=socket.create_connection(('127.0.0.1',6667));s.sendall(b'NICK '+b'z'*505+b'\r\n')"
+
+<span class="c"># fuites</span>
+valgrind --leak-check=full --show-leak-kinds=all ./ircserv 6667 pass</pre>
+    </div>
+
+    <div class="callout">
+      <strong>En résumé</strong>
+      <p>
+        Une vingtaine d'heures, soit une dizaine chacun — dont la moitié sur des commandes qui
+        reprennent un patron déjà écrit. La partie réellement difficile (un <code>poll</code>
+        unique, des fd non-bloquants, du buffering correct dans les deux sens) est derrière vous
+        et fonctionne. Le vrai risque n'est pas technique : c'est que trois semaines viennent de
+        passer pour deux commits de réorganisation. Faites le lot 0 aujourd'hui, le lot 1 cette
+        semaine, et à partir du lot 2 le projet avance tout seul.
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <span>ft_irc — bilan au 10 août 2026</span>
+  <span>branche magillie · 147f240</span>
+  <span>build vérifié · 2 crashs reproduits</span>
+</footer>

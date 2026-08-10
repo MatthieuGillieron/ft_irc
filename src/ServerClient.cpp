@@ -34,12 +34,12 @@ void Server::handleClient(int fd)
 		if(errno == EAGAIN)
 			return;
 		std::cerr << "recv() error:" << strerror(errno) << std::endl;
-		_toDisconnect.push_back(fd);
+		markDisconnect(fd);
 		return;
 	}
 	else if(bytesReceived == 0)
 	{
-		_toDisconnect.push_back(fd);
+		markDisconnect(fd);
 		std::cout << "Client disconnected" << std::endl;
 	}
 	else if(bytesReceived > 0)
@@ -47,8 +47,9 @@ void Server::handleClient(int fd)
 		Client* client = findClient(fd);
 		if (client == NULL)
 			return;
-		recvBuffer[bytesReceived] = '\0';
-		client->appendToBuffer(recvBuffer);
+		// on construit la chaine a partir de la longueur lue, jamais d'un '\0'
+		// ajoute a la main : recvBuffer[512] serait hors du tampon
+		client->appendToBuffer(std::string(recvBuffer, bytesReceived));
 		while(client->getInBuffer().find("\r\n") != std::string::npos)
 		{
 			size_t pos = client->getInBuffer().find("\r\n");
@@ -77,8 +78,44 @@ void Server::flushClient(int fd)
 	}
 }
 
+// un meme fd peut etre signale deux fois dans le meme tour (POLLHUP + recv a 0) :
+// sans ce garde-fou, le second close() porterait sur un descripteur deja reattribue
+void Server::markDisconnect(int fd)
+{
+	for (size_t i = 0; i < _toDisconnect.size(); i++)
+	{
+		if (_toDisconnect[i] == fd)
+			return;
+	}
+	_toDisconnect.push_back(fd);
+}
+
+
 void Server::disconnectClient(int fd)
 {
+	Client* client = findClient(fd);
+
+	// il faut sortir le client de ses salons AVANT de le detruire :
+	// sinon Channel::_members garde un pointeur vers de la memoire liberee,
+	// et le prochain broadcast ecrit dedans
+	if (client != NULL)
+	{
+		std::vector<Channel*> chans = getChannelsOf(client);
+		for (size_t i = 0; i < chans.size(); i++)
+		{
+			chans[i]->removeMember(client); // retire aussi le statut d'operateur
+			chans[i]->removeInvite(client->getNickName());
+
+			// un salon vide ne doit pas survivre : il garderait ses modes,
+			// sa cle et sa liste d'invites pour le prochain qui le recree
+			if (chans[i]->isEmpty())
+			{
+				_channels.erase(chans[i]->getName());
+				delete chans[i];
+			}
+		}
+	}
+
 	close(fd);
 	for(size_t i = 0; i < _pollfds.size(); i++)
 	{

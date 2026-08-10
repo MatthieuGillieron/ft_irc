@@ -9,11 +9,11 @@ void Server::handlePing(Client& client, const Message& msg)
 
 	if (msg.param.empty())
 	{
-		reply(client, "409: No target for ping");
+		sendNumeric(client, 409, "No origin specified");
 		return;
 	}
 
-	std::string value = msg.param[0];
-	reply(client, "PONG :" + value);
+	// PONG n'est pas un code numerique : ":ircserv PONG ircserv :<token>"
+	reply(client, ":" SERVER_NAME " PONG " SERVER_NAME " :" + msg.param[0]);
 
 }

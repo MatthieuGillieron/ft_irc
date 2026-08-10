@@ -1,37 +1,58 @@
 #include "../header/Message.hpp"
+#include <cctype>
 
+// Format d'une ligne IRC :
+//   [":" prefixe SPACE] commande [SPACE parametres] [SPACE ":" trailing]
+// Le serveur ignore le prefixe : c'est le socket qui identifie l'emetteur.
+// La commande est insensible a la casse ("join" == "JOIN").
 Message Message::parse(std::string line)
 {
     Message msg;
-    size_t spacePos = line.find(' ');
-    if(spacePos == std::string::npos)
+    size_t i = 0;
+
+    // prefixe optionnel -> on le saute
+    if (!line.empty() && line[0] == ':')
     {
-        msg.command = line;
-        return msg;
+        size_t space = line.find(' ');
+        if (space == std::string::npos)
+            return msg;
+        i = space + 1;
     }
-    msg.command = line.substr(0, spacePos);
-    std::string rest = line.substr(spacePos + 1);
-    while(!rest.empty())
+
+    while (i < line.size() && line[i] == ' ')
+        i++;
+
+    size_t start = i;
+    while (i < line.size() && line[i] != ' ')
+        i++;
+    msg.command = line.substr(start, i - start);
+
+    for (size_t k = 0; k < msg.command.size(); k++)
     {
-        if(rest[0] == ':')
+        unsigned char c = static_cast<unsigned char>(msg.command[k]);
+        msg.command[k] = static_cast<char>(std::toupper(c));
+    }
+
+    while (i < line.size())
+    {
+        // plusieurs espaces d'affilee ne doivent pas creer de parametre vide
+        while (i < line.size() && line[i] == ' ')
+            i++;
+        if (i >= line.size())
+            break;
+
+        // le trailing commence par ':' et va jusqu'a la fin de la ligne
+        if (line[i] == ':')
         {
-            msg.param.push_back(rest.substr(1));
+            msg.param.push_back(line.substr(i + 1));
             break;
         }
-        else
-        {
-            size_t nextSpace = rest.find(' ');
-            if(nextSpace == std::string::npos)
-            {
-                msg.param.push_back(rest);
-                break;
-            }
-            else
-            {
-                msg.param.push_back(rest.substr(0, nextSpace));
-                rest = rest.substr(nextSpace + 1);
-            }
-        }
+
+        start = i;
+        while (i < line.size() && line[i] != ' ')
+            i++;
+        msg.param.push_back(line.substr(start, i - start));
     }
+
     return msg;
 }

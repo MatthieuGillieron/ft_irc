@@ -24,15 +24,20 @@
 
 extern sig_atomic_t g_shutdown;
 
+// nom du serveur, utilise comme prefixe de toutes les reponses
+#define SERVER_NAME "ircserv"
+
+// prefixe d'un message emis au nom d'un client : "nick!user@localhost"
+std::string buildPrefix(const Client &client);
+
+// comparaison de pseudos / de noms de salon : IRC est insensible a la casse
+bool ircEqual(const std::string &a, const std::string &b);
+
 class Server
 {
     public:
     Server(unsigned int port, std::string password) : _port(port), _password(password) {};
     ~Server();
-
-	std::string getPassword() const;
-	std::string getPort() const;
-	std::string getListenFd() const;
 
     void run(); // poll
 
@@ -49,8 +54,15 @@ class Server
 	void joinReplies(Client& client, Channel* chan);
 
 	void disconnectClient(int fd);
+	void markDisconnect(int fd); // met un fd en file de deconnexion, sans doublon
 
+	// === ENVOI ===
+	// ligne brute, le CRLF est ajoute
 	void reply(Client &client, const std::string &msg);
+	// ":ircserv <code> <nick> <params> :<trailing>"
+	void sendNumeric(Client &client, int code, const std::string &params, const std::string &trailing);
+	void sendNumeric(Client &client, int code, const std::string &trailing);
+
 	void checkRegister(Client &client);
 
 
@@ -58,7 +70,9 @@ class Server
 
 	void flushClient(int fd);
 	Client* findClient(int fd);
+	Client* findClientByNick(const std::string& nick);
 	Channel* findChannel(const std::string& name);
+	std::vector<Channel*> getChannelsOf(Client* client);
 
     private:
 		unsigned int _port;

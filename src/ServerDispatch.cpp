@@ -1,22 +1,54 @@
 #include "../header/Server.hpp"
 #include "../header/Message.hpp"
 
+// Aiguillage d'une commande deja parsee.
+// Trois etages : les commandes d'enregistrement, celles autorisees avant
+// l'enregistrement, puis tout le reste qui exige un client enregistre.
 void Server::dispatcher(Client* client, Message msg)
 {
-	if(msg.command == "PASS")
+	if (msg.command.empty())
+		return;
+
+	// irssi envoie CAP a la connexion : on ne negocie aucune extension
+	if (msg.command == "CAP")
+		return;
+
+	if (msg.command == "PASS")
 	{
 		handlePass(*client, msg);
+		return;
 	}
-	else if(msg.command == "NICK")
+	if (msg.command == "NICK")
+	{
 		handleNick(*client, msg);
-	else if(msg.command == "USER")
+		return;
+	}
+	if (msg.command == "USER")
+	{
 		handleUser(*client, msg);
-	else if (msg.command == "PING")
+		return;
+	}
+	// un client peut avoir besoin de PING avant d'etre enregistre
+	if (msg.command == "PING")
+	{
 		handlePing(*client, msg);
-	else if (msg.command == "JOIN")
-		handleJoin(*client, msg);
+		return;
+	}
 
+	if (!client->getRegistred())
+	{
+		sendNumeric(*client, 451, "You have not registered");
+		return;
+	}
+
+	if (msg.command == "JOIN")
+		handleJoin(*client, msg);
+	else
+		sendNumeric(*client, 421, msg.command, "Unknown command");
 }
+
+
+// === RECHERCHE ===
 
 Channel* Server::findChannel(const std::string& name)
 {
@@ -24,4 +56,34 @@ Channel* Server::findChannel(const std::string& name)
 	if (it == _channels.end())
 		return NULL;
 	return it->second;
+}
+
+
+Client* Server::findClientByNick(const std::string& nick)
+{
+	// sinon un pseudo vide correspondrait a tout client pas encore nomme
+	if (nick.empty())
+		return NULL;
+
+	for (size_t i = 0; i < _clients.size(); i++)
+	{
+		if (ircEqual(_clients[i]->getNickName(), nick))
+			return _clients[i];
+	}
+	return NULL;
+}
+
+
+// tous les salons dont ce client est membre
+// utilise par QUIT, par le changement de pseudo et par la deconnexion
+std::vector<Channel*> Server::getChannelsOf(Client* client)
+{
+	std::vector<Channel*> out;
+
+	for (std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+	{
+		if (it->second->isMember(client))
+			out.push_back(it->second);
+	}
+	return out;
 }

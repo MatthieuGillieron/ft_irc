@@ -4,18 +4,7 @@
 
 
 
-// === REPLY - WELCOME ===
-
-
-void Server::reply(Client &client, const std::string &msg)
-{
-
-	// revoir les retours protocole IRC
-	std::string complete = msg + "\r\n";
-
-	client.appendToOutBuffer(complete);
-
-}
+// === WELCOME ===
 
 void Server::checkRegister(Client &client)
 {
@@ -27,14 +16,11 @@ void Server::checkRegister(Client &client)
 
 	client.setRegistred(true);
 
-	// message wlecome
-
-	std::string nickname = client.getNickName();
-	reply(client, ":ircserv 001 " + nickname + " :Welcome to IRC network " + nickname);
-	reply(client, ":ircserv 002 " + nickname + " :You'r host is ircserv, version 1.0 ");
-	reply(client, ":ircserv 003 " + nickname + " :This server has been created recently");
-	reply(client, ":ircserv 004 " + nickname + " :ircserv 1.0 o o");
-
+	sendNumeric(client, 1, "Welcome to the Internet Relay Network " + buildPrefix(client));
+	sendNumeric(client, 2, "Your host is " SERVER_NAME ", running version 1.0");
+	sendNumeric(client, 3, "This server was created recently");
+	// 004 n'a pas de trailing : <serveur> <version> <modes user> <modes salon>
+	sendNumeric(client, 4, SERVER_NAME " 1.0 o itkol", "");
 }
 
 
@@ -83,24 +69,28 @@ bool isValidNick(const std::string &nickName)
 
 void Server::handlePass(Client& client, const Message& msg)
 {
+	if (client.getRegistred())
+	{
+		sendNumeric(client, 462, "You may not reregister");
+		return;
+	}
 
 	if (msg.param.empty())
 	{
-		reply(client, "461: Empty parameter");
+		sendNumeric(client, 461, "PASS", "Not enough parameters");
 		return;
 	}
 
-	if (client.getPass())
+	// mot de passe faux : on repond, puis on ferme des que le buffer est parti
+	if (msg.param[0] != _password)
 	{
-		reply(client, "462: Already connected");
+		sendNumeric(client, 464, "Password incorrect");
+		reply(client, "ERROR :Closing link (bad password)");
+		client.setQuitting(true);
 		return;
 	}
 
-	if (msg.param[0] == _password)
-		client.setPass(true);
-	else
-		reply(client, "464: Password incorrect");
-
+	client.setPass(true);
 	checkRegister(client);
 }
 
@@ -111,9 +101,16 @@ void Server::handlePass(Client& client, const Message& msg)
 
 void Server::handleNick(Client &client, const Message &msg)
 {
+	// le sujet impose PASS en premier
+	if (!client.getPass())
+	{
+		sendNumeric(client, 451, "You have not registered");
+		return;
+	}
+
 	if (msg.param.empty())
 	{
-		reply(client, "431: No nickname");
+		sendNumeric(client, 431, "No nickname given");
 		return;
 	}
 
@@ -121,18 +118,16 @@ void Server::handleNick(Client &client, const Message &msg)
 
 	if (!isValidNick(nickName))
 	{
-		reply(client, "432 " + nickName + " :Erroneous nickname");
+		sendNumeric(client, 432, nickName, "Erroneous nickname");
 		return;
 	}
 
-
-	for (size_t i = 0; i < _clients.size(); i++)
+	// unicite insensible a la casse : "Bob" et "bob" sont le meme pseudo
+	Client *other = findClientByNick(nickName);
+	if (other != NULL && other != &client)
 	{
-		if (_clients[i]->getNickName() == nickName && _clients[i] != &client)
-		{
-			reply(client, "433 " + nickName + " :Nickname is already in use");
-			return;
-		}
+		sendNumeric(client, 433, nickName, "Nickname is already in use");
+		return;
 	}
 
 	client.setNickName(nickName);
@@ -144,15 +139,21 @@ void Server::handleNick(Client &client, const Message &msg)
 
 void Server::handleUser(Client& client, const Message& msg)
 {
+	if (!client.getPass())
+	{
+		sendNumeric(client, 451, "You have not registered");
+		return;
+	}
+
 	if (client.getRegistred())
 	{
-		reply(client, "462 :Already registred");
+		sendNumeric(client, 462, "You may not reregister");
 		return;
 	}
 
 	if (msg.param.size() < 4)
 	{
-		reply(client, "461 USER :Not enough parameters");
+		sendNumeric(client, 461, "USER", "Not enough parameters");
 		return;
 	}
 

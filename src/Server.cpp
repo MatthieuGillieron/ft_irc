@@ -52,7 +52,7 @@ void Server::run()
 			if (_pollfds[i].revents & (POLLHUP | POLLERR | POLLNVAL))
 			{
     			if (_pollfds[i].fd != _listenFd)
-        			_toDisconnect.push_back(_pollfds[i].fd);
+        			markDisconnect(_pollfds[i].fd);
     			continue;
 			}
 			if (_pollfds[i].revents & POLLIN)
@@ -71,6 +71,13 @@ void Server::run()
     		flushClient(_pollfds[i].fd);
 			}
 		}
+		// un client marque "quitting" part une fois sa derniere reponse envoyee
+		for (size_t c = 0; c < _clients.size(); c++)
+		{
+			if (_clients[c]->isQuitting() && _clients[c]->getOutBuffer().empty())
+				markDisconnect(_clients[c]->getFd());
+		}
+
 		for (size_t k = 0; k < _toDisconnect.size(); k++)
     		disconnectClient(_toDisconnect[k]);
 		_toDisconnect.clear();

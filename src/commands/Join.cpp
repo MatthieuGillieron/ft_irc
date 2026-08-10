@@ -2,12 +2,6 @@
 #include "../../header/Server.hpp"
 
 
-static std::string buildPrefix(Client &client)
-{
-	return client.getNickName() + "!" + client.getUsrName() + "@localhost";
-}
-
-
 bool Server::checkJoin(Client &client, Channel *chan, const std::string &key)
 {
 	std::string nick = client.getNickName();
@@ -15,17 +9,17 @@ bool Server::checkJoin(Client &client, Channel *chan, const std::string &key)
 
 	if (chan->isInviteOnly() && !chan->isInvited(nick))
 	{
-		reply(client, ":ircserv 473 " + nick + " " + chanName + " :Cannot join channel (+i)");
+		sendNumeric(client, 473, chanName, "Cannot join channel (+i)");
 		return false;
 	}
 	if (chan->hasKey() && key != chan->getKey())
 	{
-		reply(client, ":ircserv 475 " + nick + " " + chanName + " :Cannot join channel (+k)");
+		sendNumeric(client, 475, chanName, "Cannot join channel (+k)");
 		return false;
 	}
 	if (chan->hasLimit() && chan->getMemberCount() >= chan->getLimit())
 	{
-		reply(client, ":ircserv 471 " + nick + " " + chanName + " :Cannot join channel (+l)");
+		sendNumeric(client, 471, chanName, "Cannot join channel (+l)");
 		return false;
 	}
 	return true;
@@ -40,10 +34,10 @@ void Server::joinReplies(Client &client, Channel *chan)
 	std::string chanName = chan->getName();
 
 	if (!chan->getTopic().empty())
-		reply(client, ":ircserv 332 " + nick + " " + chanName + " :" + chan->getTopic());
+		sendNumeric(client, 332, chanName, chan->getTopic());
 
-	reply(client, ":ircserv 353 " + nick + " = " + chanName + " :" + chan->getNamesList());
-	reply(client, ":ircserv 366 " + nick + " " + chanName + " :End of /NAMES list");
+	sendNumeric(client, 353, "= " + chanName, chan->getNamesList());
+	sendNumeric(client, 366, chanName, "End of /NAMES list");
 }
 
 
@@ -51,14 +45,10 @@ void Server::joinReplies(Client &client, Channel *chan)
 
 void Server::handleJoin(Client &client, const Message &msg)
 {
-	if (!client.getRegistred())
-	{
-		reply(client, ":ircserv 451 * :You have not registered");
-		return;
-	}
+	// l'enregistrement est deja verifie par le dispatcher
 	if (msg.param.empty())
 	{
-		reply(client, ":ircserv 461 " + client.getNickName() + " JOIN :Not enough parameters");
+		sendNumeric(client, 461, "JOIN", "Not enough parameters");
 		return;
 	}
 
@@ -67,7 +57,7 @@ void Server::handleJoin(Client &client, const Message &msg)
 
 	if (chanName.empty() || chanName[0] != '#')
 	{
-		reply(client, ":ircserv 403 " + client.getNickName() + " " + chanName + " :No such channel");
+		sendNumeric(client, 403, chanName, "No such channel");
 		return;
 	}
 
