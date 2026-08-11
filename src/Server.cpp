@@ -1,12 +1,12 @@
 
 #include "../header/Server.hpp"
 
+// Le message d'adieu est envoye par flushAll() avant d'arriver ici :
+// le destructeur ne fait plus aucune I/O, tout passe par poll().
 Server::~Server()
 {
-	std::string msg_error = "ERROR : Server shutting down\r\n";
 	for(size_t i = 0; i < _clients.size(); i++)
 	{
-		send(_clients[i]->getFd(), msg_error.c_str(), msg_error.size(), 0);
 		close(_clients[i]->getFd());
 		delete(_clients[i]);
 	}
@@ -14,6 +14,41 @@ Server::~Server()
 		delete it->second;
 	if (_listenFd != -1)
 		close(_listenFd);
+}
+
+
+// Vide les buffers de sortie restants, en passant par poll() comme le reste.
+// Borne a 10 tours de 100 ms : un client qui ne lit plus ne doit pas
+// empecher le serveur de s'arreter.
+void Server::flushAll()
+{
+	for (int round = 0; round < 10; round++)
+	{
+		std::vector<struct pollfd> pending;
+
+		for (size_t i = 0; i < _clients.size(); i++)
+		{
+			if (_clients[i]->getOutBuffer().empty())
+				continue;
+
+			struct pollfd p;
+			p.fd = _clients[i]->getFd();
+			p.events = POLLOUT;
+			p.revents = 0;
+			pending.push_back(p);
+		}
+		if (pending.empty())
+			return;
+
+		if (poll(&pending[0], pending.size(), 100) <= 0)
+			return;
+
+		for (size_t i = 0; i < pending.size(); i++)
+		{
+			if (pending[i].revents & POLLOUT)
+				flushClient(pending[i].fd);
+		}
+	}
 }
 
 
@@ -87,6 +122,9 @@ bool Server::run()
     }
 
 	std::cout << "Server shutting down..." << std::endl;
+	for (size_t i = 0; i < _clients.size(); i++)
+		reply(*_clients[i], "ERROR :Server shutting down");
+	flushAll();
 	return true;
 }
 
