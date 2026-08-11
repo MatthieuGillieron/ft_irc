@@ -37,7 +37,8 @@ int main(int ac, char **av)
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGQUIT, signalHandler);
 	Server server(port, password);
-	server.run();
+	if (!server.run())
+		return 1;
 
 	return 0;
 }

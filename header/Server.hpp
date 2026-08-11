@@ -39,12 +39,12 @@ std::vector<std::string> splitList(const std::string &line, char sep);
 class Server
 {
     public:
-    Server(unsigned int port, std::string password) : _port(port), _password(password) {};
+    Server(unsigned int port, std::string password) : _port(port), _password(password), _listenFd(-1) {};
     ~Server();
 
-    void run(); // poll
+    bool run(); // poll ; false si le serveur n'a pas pu demarrer
 
-	void setupSocket(); // socket ecoute
+	bool setupSocket(); // socket ecoute
 	void acceptClient();
 
 	void handleClient(int fd);

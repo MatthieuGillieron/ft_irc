@@ -12,12 +12,15 @@ Server::~Server()
 	}
 	for(std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
 		delete it->second;
-	close(_listenFd);
+	if (_listenFd != -1)
+		close(_listenFd);
 }
 
-void Server::run()
+
+bool Server::run()
 {
-	Server::setupSocket();
+	if (!setupSocket())
+		return false;
 
 	struct pollfd pfd;
 	pfd.fd = _listenFd;
@@ -82,19 +85,24 @@ void Server::run()
     		disconnectClient(_toDisconnect[k]);
 		_toDisconnect.clear();
     }
+
 	std::cout << "Server shutting down..." << std::endl;
+	return true;
 }
 
 // https://www.geeksforgeeks.org/cpp/socket-programming-in-cpp/
 
-void Server::setupSocket()
+// Un echec ici doit arreter le serveur : sans ca run() enchainait sur
+// poll() avec un descripteur invalide et tournait dans le vide.
+// Le cas se produit des qu'on relance sur un port deja occupe.
+bool Server::setupSocket()
 {
 	_listenFd = socket(AF_INET, SOCK_STREAM, 0);
 
 	if(_listenFd == -1)
 	{
-		std::cerr << "socket() error:" << strerror(errno) << std::endl;
-		return;
+		std::cerr << "socket() error: " << strerror(errno) << std::endl;
+		return false;
 	}
 
 	sockaddr_in serverAddress;
@@ -106,13 +114,18 @@ void Server::setupSocket()
 	setsockopt(_listenFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 	if(bind(_listenFd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1 )
 	{
-		std::cerr << "bind() error:" << strerror(errno) << std::endl;
-		return;
+		std::cerr << "bind() error: " << strerror(errno) << std::endl;
+		close(_listenFd);
+		_listenFd = -1;
+		return false;
 	}
 	if(listen(_listenFd, 5) == -1)
 	{
-		std::cerr << "listen() error:" << strerror(errno) << std::endl;
-		return;
+		std::cerr << "listen() error: " << strerror(errno) << std::endl;
+		close(_listenFd);
+		_listenFd = -1;
+		return false;
 	}
 	fcntl(_listenFd, F_SETFL, O_NONBLOCK);
+	return true;
 }
