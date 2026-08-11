@@ -65,11 +65,20 @@ void Server::flushClient(int fd)
 {
 	Client* client = findClient(fd);
 	if (client == NULL) return;
+
 	std::string out = client->getOutBuffer();
+	if (out.empty())
+		return;
+
 	int bytesSent = send(fd, out.c_str(), out.size(), 0);
 	if(bytesSent < 0)
 	{
-		std::cerr << "Error: " << std::endl;
+		// le noyau ne peut pas ecrire maintenant : on reessaiera au prochain tour
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
+			return;
+		// tout autre echec signifie que le client n'est plus joignable
+		std::cerr << "send() error: " << strerror(errno) << std::endl;
+		markDisconnect(fd);
 		return;
 	}
 	if(bytesSent > 0)
