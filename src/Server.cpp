@@ -128,11 +128,7 @@ bool Server::run()
 	return true;
 }
 
-// https://www.geeksforgeeks.org/cpp/socket-programming-in-cpp/
 
-// Un echec ici doit arreter le serveur : sans ca run() enchainait sur
-// poll() avec un descripteur invalide et tournait dans le vide.
-// Le cas se produit des qu'on relance sur un port deja occupe.
 bool Server::setupSocket()
 {
 	_listenFd = socket(AF_INET, SOCK_STREAM, 0);
