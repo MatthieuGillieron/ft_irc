@@ -2,11 +2,10 @@
 #include "../../header/Server.hpp"
 
 
-// PRIVMSG <cible>{,<cible>} :<texte>
-// NOTICE  <cible>{,<cible>} :<texte>
-//
-// Seule difference : le RFC interdit d'emettre la moindre reponse automatique
-// en retour d'un NOTICE, sous peine de boucle infinie entre deux serveurs.
+// PRIVMSG et NOTICE ne different que par le drapeau silent : le RFC interdit
+// d'emettre la moindre reponse automatique en retour d'un NOTICE, sous peine de
+// boucle infinie entre deux serveurs. Le texte est normalement le trailing,
+// mais on accepte aussi "PRIVMSG #chan bonjour tout le monde" sans les ':'.
 void Server::sendMessage(Client &client, const Message &msg, const std::string &cmd, bool silent)
 {
 	if (msg.param.empty())
@@ -16,8 +15,6 @@ void Server::sendMessage(Client &client, const Message &msg, const std::string &
 		return;
 	}
 
-	// le texte est normalement le trailing, mais on accepte aussi
-	// "PRIVMSG #chan bonjour tout le monde" sans le ':'
 	std::string text;
 	for (size_t i = 1; i < msg.param.size(); i++)
 	{
@@ -50,14 +47,12 @@ void Server::sendMessage(Client &client, const Message &msg, const std::string &
 					sendNumeric(client, 403, target, "No such channel");
 				continue;
 			}
-			// on n'ecrit pas dans un salon qu'on n'a pas rejoint
 			if (!chan->isMember(&client))
 			{
 				if (!silent)
 					sendNumeric(client, 404, target, "Cannot send to channel");
 				continue;
 			}
-			// le nom reel du salon, pas celui tape par l'emetteur
 			chan->broadcast(":" + buildPrefix(client) + " " + cmd + " "
 				+ chan->getName() + " :" + text, &client);
 		}

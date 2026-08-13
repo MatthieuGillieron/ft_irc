@@ -18,11 +18,10 @@
 # define BOLD "\033[1m"
 # define DIM "\033[2m"
 
-// role -> couleur, pour ne pas avoir a choisir a chaque appel
 # define C_UP     GREEN    // arrivee d'un client
 # define C_DOWN   YELLOW   // depart d'un client
 # define C_ERR    RED      // erreur
 # define C_INFO   CYAN     // cycle de vie du serveur
-# define C_DETAIL DIM      // fd, pseudo, details secondaires
+# define C_DETAIL DIM      // details secondaires
 
 #endif

@@ -1,24 +1,26 @@
 #include "../header/Server.hpp"
 
-// volatile : le handler peut la modifier a tout instant, le compilateur
-// ne doit pas garder une copie en registre dans la boucle principale
+// volatile : le handler la modifie a tout instant, le compilateur ne doit pas
+// en garder une copie en registre dans la boucle principale.
 volatile sig_atomic_t g_shutdown = 0;
 
+// Un handler de signal ne peut rien faire d'autre sans risque : il s'execute a
+// un moment arbitraire, y compris au milieu d'une allocation.
 void signalHandler(int signal)
 {
 	(void)signal;
 	g_shutdown = 1;
 }
 
+// Le try/catch garantit ce qu'exige le sujet : le programme ne quitte jamais de
+// facon inattendue, meme a court de memoire ou un new echouerait.
 int main(int ac, char **av)
 {
-
 	if (ac != 3)
 	{
 		std::cout << C_ERR << "Usage: ./ircserv <port> <password>" << RESET << std::endl;
 		return 1;
 	}
-
 
 	unsigned int port = std::atoi(av[1]);
 	if (port < 1024 || port > 65535)
@@ -26,7 +28,6 @@ int main(int ac, char **av)
 		std::cout << C_ERR << "Error: port must be between 1024 and 65535" << RESET << std::endl;
 		return 1;
 	}
-
 
 	std::string password(av[2]);
 	if (password.empty())
@@ -42,8 +43,6 @@ int main(int ac, char **av)
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGQUIT, signalHandler);
 
-	// le sujet exige que le programme ne quitte jamais de facon inattendue,
-	// meme a court de memoire : un new qui echoue ne doit pas terminer brutalement
 	try
 	{
 		Server server(port, password);
@@ -58,47 +57,3 @@ int main(int ac, char **av)
 
 	return 0;
 }
-
-
-/**
- * # ft_irc — Répartition des tâches
-
-## Coéquipier 1 — Couche réseau & cycle de vie des connexions
-
-### Phase 2 — Buffering & Parsing
-- Buffer par client (`inBuffer` dans `Client`)
-- Accumulation des données jusqu'à `\r\n`
-- Parser générique : extraire `commande + paramètres + trailing`
-- Dispatcher vers les handlers
-
-### Phase 6 — Robustesse
-- SIGINT (Ctrl-C) → shutdown propre, fermeture de tous les fd
-- Vérification des leaks (valgrind)
-- Edge cases : déconnexion brutale, données fragmentées, gros volumes
-
----
-
-## Coéquipier 2 — Logique IRC & protocole
-
-### Phase 3 — Enregistrement
- - fonction d'envoie ()
-- `PASS` → vérification mot de passe (erreur 464) // fait
-- `NICK` → unicité (433), validité (432)
-- `USER` → username + realname
-- Message de bienvenue `001` quand les 3 sont OK
-- `PING/PONG` → sans ça irssi coupe la connexion
-
-### Phase 4 — Chat de base
-- Classe `Channel` (nom, membres, opérateurs, topic)
-- `JOIN` → créer si inexistant, créateur = opérateur, réponses 353/366
-- `PRIVMSG` → channel (broadcast) et user (privé)
-- `PART`, `QUIT`, changement de `NICK`
-
-### Phase 5 — Commandes opérateur
-- `KICK` (op only, erreur 482 sinon)
-- `INVITE`
-- `TOPIC` (afficher / changer)
-- `MODE` avec les flags : `i` `t` `k` `o` `l`
-
----
- */

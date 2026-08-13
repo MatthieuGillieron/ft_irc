@@ -12,7 +12,6 @@ class Channel
 		Channel(const std::string &name);
 		~Channel() {};
 
-		// === GETTERS ===
 		std::string getName() const { return _name; }
 		std::string getTopic() const { return _topic; }
 		std::string getKey() const { return _key; }
@@ -24,7 +23,6 @@ class Channel
 		bool hasLimit() const { return _hasLimit; }
 
 
-		// === SETTERS / MODES ===
 		void setTopic(const std::string &topic) { _topic = topic; }
 
 		void setInviteOnly(bool value) { _inviteOnly = value; }
@@ -35,7 +33,6 @@ class Channel
 		void removeLimit() { _limit = 0; _hasLimit = false; }
 
 
-		// === MEMBERS ===
 		void addMember(Client *client);
 		void removeMember(Client *client);
 		bool isMember(Client *client) const;
@@ -44,22 +41,18 @@ class Channel
 		bool isEmpty() const { return _members.empty(); }
 
 
-		// === MODOS ===
 		void addModo(Client *client);
 		void removeModo(Client *client);
 		bool isModo(Client *client) const;
 
 
-		// === INVITES (par nickname) ===
 		void addInvite(const std::string &nick);
 		void removeInvite(const std::string &nick);
 		bool isInvited(const std::string &nick) const;
 
 
-		// === UTILS ===
 		void broadcast(const std::string &msg, Client *except = NULL);
 		std::string getNamesList() const;
-
 
 
 	private:

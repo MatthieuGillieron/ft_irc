@@ -26,8 +26,6 @@ bool Server::checkJoin(Client &client, Channel *chan, const std::string &key)
 }
 
 
-
-
 void Server::joinReplies(Client &client, Channel *chan)
 {
 	std::string nick = client.getNickName();
@@ -41,11 +39,8 @@ void Server::joinReplies(Client &client, Channel *chan)
 }
 
 
-
-
 void Server::handleJoin(Client &client, const Message &msg)
 {
-	// l'enregistrement est deja verifie par le dispatcher
 	if (msg.param.empty())
 	{
 		sendNumeric(client, 461, "JOIN", "Not enough parameters");

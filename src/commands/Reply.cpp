@@ -3,9 +3,7 @@
 #include <cctype>
 
 
-// === UTILS ===
-
-// les codes numeriques IRC s'ecrivent toujours sur 3 chiffres : 1 -> "001"
+// Les codes numeriques IRC s'ecrivent toujours sur trois chiffres : 1 -> "001".
 static std::string codeToString(int code)
 {
 	std::string out;
@@ -60,9 +58,6 @@ bool ircEqual(const std::string &a, const std::string &b)
 }
 
 
-
-// === ENVOI ===
-
 void Server::reply(Client &client, const std::string &msg)
 {
 	client.appendToOutBuffer(msg + "\r\n");
@@ -70,7 +65,7 @@ void Server::reply(Client &client, const std::string &msg)
 
 
 // ":ircserv <code> <nick> <params> :<trailing>"
-// tant que le client n'a pas de pseudo, le destinataire s'ecrit "*"
+// Tant que le client n'a pas de pseudo, le destinataire s'ecrit "*".
 void Server::sendNumeric(Client &client, int code, const std::string &params, const std::string &trailing)
 {
 	std::string line = ":" SERVER_NAME " " + codeToString(code) + " ";

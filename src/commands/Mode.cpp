@@ -3,8 +3,6 @@
 #include <cctype>
 
 
-// === UTILS ===
-
 static std::string numToString(size_t n)
 {
 	if (n == 0)
@@ -61,8 +59,8 @@ static std::string currentModes(Channel *chan)
 }
 
 
-// Quels flags consomment un argument.
-// -k et -l n'en prennent pas : les clients envoient "MODE #x -k" tout court.
+// -k et -l ne prennent pas d'argument : les clients envoient "MODE #x -k" tout
+// court, et l'exiger renverrait un 461 sur une commande normale.
 static bool needsArg(char mode, bool adding)
 {
 	if (mode == 'o')
@@ -72,9 +70,6 @@ static bool needsArg(char mode, bool adding)
 	return false;
 }
 
-
-
-// === APPLICATION ===
 
 bool Server::applyOneMode(Client &client, Channel *chan, char mode, bool adding, std::string &arg)
 {
@@ -105,12 +100,11 @@ bool Server::applyOneMode(Client &client, Channel *chan, char mode, bool adding,
 		}
 		long value = parseLimit(arg);
 		if (value <= 0)
-			return false; // limite absurde : on ignore sans rien diffuser
+			return false;
 		chan->setLimit(static_cast<size_t>(value));
 		return true;
 	}
 
-	// mode 'o' : donner ou retirer le statut d'operateur
 	Client *target = findClientByNick(arg);
 	if (target == NULL || !chan->isMember(target))
 	{
@@ -118,7 +112,7 @@ bool Server::applyOneMode(Client &client, Channel *chan, char mode, bool adding,
 		return false;
 	}
 
-	arg = target->getNickName(); // on rediffuse le pseudo canonique
+	arg = target->getNickName();
 	if (adding)
 		chan->addModo(target);
 	else
@@ -127,15 +121,17 @@ bool Server::applyOneMode(Client &client, Channel *chan, char mode, bool adding,
 }
 
 
-// Parcourt "+ok-l bob" : le signe courant s'applique jusqu'au suivant,
-// et chaque flag consomme ou non un argument dans l'ordre ou ils arrivent.
+// Parcourt "+ok-l bob" : le signe courant s'applique jusqu'au suivant, et
+// chaque flag consomme ou non un argument dans l'ordre d'arrivee. Seuls les
+// changements reellement appliques entrent dans le message diffuse, pour ne pas
+// annoncer une limite invalide qui a ete ignoree.
 void Server::applyModes(Client &client, Channel *chan, const Message &msg)
 {
 	std::string flags = msg.param[1];
 	size_t argIndex = 2;
 	bool adding = true;
 
-	std::string doneModes; // les changements reellement appliques
+	std::string doneModes;
 	std::string doneArgs;
 	char lastSign = 0;
 
@@ -188,10 +184,9 @@ void Server::applyModes(Client &client, Channel *chan, const Message &msg)
 }
 
 
-
-// === HANDLER ===
-
 // MODE <salon> [<flags> [<arguments>]]
+// Aucun mode utilisateur n'est gere : MODE <pseudo> est ignore. L'appartenance
+// est verifiee avant l'affichage car la reponse 324 revele la cle du salon.
 void Server::handleMode(Client &client, const Message &msg)
 {
 	if (msg.param.empty())
@@ -200,7 +195,6 @@ void Server::handleMode(Client &client, const Message &msg)
 		return;
 	}
 
-	// aucun mode utilisateur n'est gere : MODE <pseudo> est ignore
 	if (msg.param[0].empty() || msg.param[0][0] != '#')
 		return;
 
@@ -210,7 +204,6 @@ void Server::handleMode(Client &client, const Message &msg)
 		sendNumeric(client, 403, msg.param[0], "No such channel");
 		return;
 	}
-	// on verifie l'appartenance avant l'affichage : 324 revele la cle du salon
 	if (!chan->isMember(&client))
 	{
 		sendNumeric(client, 442, chan->getName(), "You're not on that channel");

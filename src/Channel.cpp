@@ -9,10 +9,6 @@ Channel::Channel(const std::string &name)
 }
 
 
-
-
-// === MEMBERS ===
-
 void Channel::addMember(Client *client)
 {
 	if (isMember(client))
@@ -30,7 +26,6 @@ void Channel::removeMember(Client *client)
 			break;
 		}
 	}
-	// un membre qui part ne doit plus etre modo
 	removeModo(client);
 }
 
@@ -44,11 +39,6 @@ bool Channel::isMember(Client *client) const
 	return false;
 }
 
-
-
-
-
-// === MODERATOR ===
 
 void Channel::addModo(Client *client)
 {
@@ -80,11 +70,6 @@ bool Channel::isModo(Client *client) const
 }
 
 
-
-
-
-// === INVITES ===
-
 void Channel::addInvite(const std::string &nick)
 {
 	if (isInvited(nick))
@@ -114,11 +99,6 @@ bool Channel::isInvited(const std::string &nick) const
 	return false;
 }
 
-
-
-
-
-// === UTILS ===
 
 void Channel::broadcast(const std::string &msg, Client *except)
 {

@@ -3,14 +3,16 @@
 
 // Format d'une ligne IRC :
 //   [":" prefixe SPACE] commande [SPACE parametres] [SPACE ":" trailing]
-// Le serveur ignore le prefixe : c'est le socket qui identifie l'emetteur.
-// La commande est insensible a la casse ("join" == "JOIN").
+//
+// Le prefixe est ignore : c'est le socket qui identifie l'emetteur, s'y fier
+// permettrait d'ecrire au nom d'un autre. La commande est mise en majuscules
+// car le RFC la definit insensible a la casse. Le trailing commence a ':' et
+// va jusqu'au bout : c'est le seul parametre pouvant contenir des espaces.
 Message Message::parse(std::string line)
 {
     Message msg;
     size_t i = 0;
 
-    // prefixe optionnel -> on le saute
     if (!line.empty() && line[0] == ':')
     {
         size_t space = line.find(' ');
@@ -35,13 +37,11 @@ Message Message::parse(std::string line)
 
     while (i < line.size())
     {
-        // plusieurs espaces d'affilee ne doivent pas creer de parametre vide
         while (i < line.size() && line[i] == ' ')
             i++;
         if (i >= line.size())
             break;
 
-        // le trailing commence par ':' et va jusqu'a la fin de la ligne
         if (line[i] == ':')
         {
             msg.param.push_back(line.substr(i + 1));

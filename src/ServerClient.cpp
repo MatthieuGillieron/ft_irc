@@ -1,6 +1,11 @@
 #include "../header/Server.hpp"
 #include "../header/Message.hpp"
 
+// Le RFC plafonne un message a 512 octets. Sans cette borne, un client qui
+// enverrait un flux sans jamais de retour a la ligne ferait grossir le buffer
+// d'entree jusqu'a epuiser la memoire.
+#define MAX_LINE_LENGTH 8192
+
 
 void Server::acceptClient()
 {
@@ -8,7 +13,7 @@ void Server::acceptClient()
 	socklen_t clientLen = sizeof(aclient);
 
 	int clientFd = accept(_listenFd, (struct sockaddr*)&aclient, &clientLen);
-	if(clientFd == -1)
+	if (clientFd == -1)
 	{
 		std::cerr << C_ERR << "[!] accept() error: " << strerror(errno) << RESET << std::endl;
 		return;
@@ -22,25 +27,19 @@ void Server::acceptClient()
 
 	_pollfds.push_back(acceptcl);
 	_clients.push_back(new Client(clientFd));
-	std::cout << C_UP << "[+] New connexion " << RESET
-			  << C_DETAIL << "(fd " << clientFd << ")" << RESET << std::endl;
+	std::cout << C_UP << "[+] New connexion" << RESET << std::endl;
 }
 
-// Taille au-dela de laquelle une ligne sans fin est consideree hostile.
-// Le RFC plafonne un message a 512 octets ; sans cette borne, un client qui
-// enverrait un flux sans jamais de retour a la ligne ferait grossir le buffer
-// jusqu'a epuiser la memoire.
-#define MAX_LINE_LENGTH 8192
 
+// Le sujet interdit de consulter errno apres un recv : un retour <= 0 est donc
+// traite indistinctement comme un depart, poll() ayant deja signale le fd pret.
+// Le decoupage se fait sur '\n' et non sur "\r\n" car netcat sans -C n'envoie
+// qu'un LF, et le sujet exige que nc fonctionne.
 void Server::handleClient(int fd)
 {
 	char recvBuffer[512];
 	int bytesReceived = recv(fd, recvBuffer, sizeof(recvBuffer), 0);
 
-	// poll() vient de signaler ce descripteur pret : un retour <= 0 est soit une
-	// fin de flux, soit une erreur reelle. Le sujet interdit de consulter errno
-	// apres un recv pour decider de la suite, donc les deux cas sont traites
-	// de la meme facon : le client s'en va.
 	if (bytesReceived <= 0)
 	{
 		markDisconnect(fd);
@@ -51,13 +50,8 @@ void Server::handleClient(int fd)
 	if (client == NULL)
 		return;
 
-	// on construit la chaine a partir de la longueur lue, jamais d'un '\0'
-	// ajoute a la main : recvBuffer[512] serait hors du tampon
 	client->appendToBuffer(std::string(recvBuffer, bytesReceived));
 
-	// On decoupe sur '\n' et non sur "\r\n" : le protocole impose CRLF, mais
-	// netcat sans -C n'envoie qu'un LF, et le sujet demande que nc fonctionne.
-	// Le '\r' eventuel est retire juste apres.
 	size_t pos;
 	while ((pos = client->getInBuffer().find('\n')) != std::string::npos)
 	{
@@ -71,35 +65,36 @@ void Server::handleClient(int fd)
 		dispatcher(client, msg);
 	}
 
-	// ligne interminable : on coupe plutot que de laisser le buffer enfler
 	if (client->getInBuffer().size() > MAX_LINE_LENGTH)
 		markDisconnect(fd);
 }
 
+
+// send peut n'ecrire qu'une partie du buffer : on n'efface que ce qui est parti,
+// le reste sera retente au prochain POLLOUT. Le sujet interdisant de consulter
+// errno, un echec laisse le buffer intact ; un client mort est ramasse par
+// POLLHUP ou POLLERR en tete de boucle.
 void Server::flushClient(int fd)
 {
 	Client* client = findClient(fd);
-	if (client == NULL) return;
+	if (client == NULL)
+		return;
 
 	std::string out = client->getOutBuffer();
 	if (out.empty())
 		return;
 
 	int bytesSent = send(fd, out.c_str(), out.size(), 0);
-
-	// Le sujet interdit de consulter errno apres un send. On ne peut donc pas
-	// distinguer "tampon noyau plein" d'une erreur reelle : on ne touche pas au
-	// buffer, l'envoi sera retente au prochain POLLOUT. Un client reellement
-	// mort est ramasse par POLLHUP / POLLERR en tete de boucle.
 	if (bytesSent <= 0)
 		return;
 
-	// on n'efface QUE ce qui est reellement parti : send peut etre partiel
 	client->eraseOutBuffer(0, bytesSent);
 }
 
-// un meme fd peut etre signale deux fois dans le meme tour (POLLHUP + recv a 0) :
-// sans ce garde-fou, le second close() porterait sur un descripteur deja reattribue
+
+// Un meme fd peut etre signale deux fois dans le meme tour (POLLHUP + recv a 0).
+// Sans ce garde-fou, le second close() porterait sur un descripteur deja
+// reattribue a une autre connexion.
 void Server::markDisconnect(int fd)
 {
 	for (size_t i = 0; i < _toDisconnect.size(); i++)
@@ -111,24 +106,20 @@ void Server::markDisconnect(int fd)
 }
 
 
+// Le client doit sortir de ses salons AVANT d'etre detruit, sinon
+// Channel::_members garde un pointeur vers de la memoire liberee et le prochain
+// broadcast ecrit dedans. Une coupure brutale est annoncee comme un QUIT.
 void Server::disconnectClient(int fd)
 {
 	Client* client = findClient(fd);
 
-	// il faut sortir le client de ses salons AVANT de le detruire :
-	// sinon Channel::_members garde un pointeur vers de la memoire liberee,
-	// et le prochain broadcast ecrit dedans
 	if (client != NULL)
 	{
-		// trace symetrique de celle d'acceptClient : toutes les voies de
-		// deconnexion passent ici, pas seulement un recv() a zero
-		std::cout << C_DOWN << "[-] Client disconnected " << RESET
-				  << C_DETAIL << "(fd " << fd;
+		std::cout << C_DOWN << "[-] Client disconnected" << RESET;
 		if (!client->getNickName().empty())
-			std::cout << ", " << client->getNickName();
-		std::cout << ")" << RESET << std::endl;
+			std::cout << C_DETAIL << " (" << client->getNickName() << ")" << RESET;
+		std::cout << std::endl;
 
-		// une deconnexion brutale doit prevenir les salons, comme un QUIT
 		if (!client->getNickName().empty() && client->getRegistred())
 			broadcastToPeers(*client, ":" + buildPrefix(*client) + " QUIT :Connection reset by peer", false);
 
@@ -138,7 +129,7 @@ void Server::disconnectClient(int fd)
 	}
 
 	close(fd);
-	for(size_t i = 0; i < _pollfds.size(); i++)
+	for (size_t i = 0; i < _pollfds.size(); i++)
 	{
 		if (_pollfds[i].fd == fd)
 		{
@@ -146,9 +137,9 @@ void Server::disconnectClient(int fd)
 			break;
 		}
 	}
-	for(size_t i = 0; i < _clients.size(); i++)
+	for (size_t i = 0; i < _clients.size(); i++)
 	{
-		if(_clients[i]->getFd() == fd)
+		if (_clients[i]->getFd() == fd)
 		{
 			delete _clients[i];
 			_clients.erase(_clients.begin() + i);
@@ -157,14 +148,13 @@ void Server::disconnectClient(int fd)
 	}
 }
 
+
 Client* Server::findClient(int fd)
 {
-	for(size_t i = 0; i < _clients.size(); i++)
+	for (size_t i = 0; i < _clients.size(); i++)
 	{
-		if(_clients[i]->getFd() == fd)
-		{
+		if (_clients[i]->getFd() == fd)
 			return _clients[i];
-		}
 	}
 	return NULL;
 }

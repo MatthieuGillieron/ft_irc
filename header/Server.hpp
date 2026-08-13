@@ -17,11 +17,8 @@
 # include <unistd.h>    // close, read, write, lseek
 # include <fcntl.h>      // fcntl (O_NONBLOCK)
 # include <poll.h>       // poll, struct pollfd
-# include <sys/types.h>
 # include <sys/socket.h> // socket, bind, listen, accept, setsockopt
 # include <netinet/in.h> // sockaddr_in, htons, htonl, ntohs, ntohl
-# include <arpa/inet.h>  // inet_addr, inet_ntoa, inet_ntop
-# include <netdb.h>      // getaddrinfo, freeaddrinfo, gethostbyname
 
 extern volatile sig_atomic_t g_shutdown;
 
@@ -82,7 +79,6 @@ class Server
 	void disconnectClient(int fd);
 	void markDisconnect(int fd); // met un fd en file de deconnexion, sans doublon
 
-	// === ENVOI ===
 	// ligne brute, le CRLF est ajoute
 	void reply(Client &client, const std::string &msg);
 	// ":ircserv <code> <nick> <params> :<trailing>"
@@ -110,23 +106,6 @@ class Server
 		std::vector<int> _toDisconnect;
 
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #endif

@@ -3,9 +3,9 @@
 #include <cctype>
 
 
-
-// === WELCOME ===
-
+// Les trois informations reunies font basculer le client dans l'etat enregistre
+// et declenchent les reponses 001 a 004. La 004 n'a pas de trailing :
+// <serveur> <version> <modes user> <modes salon>.
 void Server::checkRegister(Client &client)
 {
 	if (!client.getPass() || client.getNickName().empty() || client.getUsrName().empty())
@@ -19,12 +19,9 @@ void Server::checkRegister(Client &client)
 	sendNumeric(client, 1, "Welcome to the Internet Relay Network " + buildPrefix(client));
 	sendNumeric(client, 2, "Your host is " SERVER_NAME ", running version 1.0");
 	sendNumeric(client, 3, "This server was created recently");
-	// 004 n'a pas de trailing : <serveur> <version> <modes user> <modes salon>
 	sendNumeric(client, 4, SERVER_NAME " 1.0 o itkol", "");
 }
 
-
-// === UTILS ===
 
 bool specialChar(char c)
 {
@@ -43,7 +40,7 @@ std::string allowed = "[]\\_^{}|`";
 bool isValidNick(const std::string &nickName)
 {
 
-	if (nickName.empty() || nickName.length() > 9) // limite du RFC 1459
+	if (nickName.empty() || nickName.length() > 9)
 		return false;
 
 
@@ -64,9 +61,8 @@ bool isValidNick(const std::string &nickName)
 }
 
 
-
-// === HANDLER  PASS - Nickname - User ===
-
+// Un mot de passe faux recoit sa reponse, puis la connexion se ferme une fois
+// le buffer de sortie parti.
 void Server::handlePass(Client& client, const Message& msg)
 {
 	if (client.getRegistred())
@@ -81,7 +77,6 @@ void Server::handlePass(Client& client, const Message& msg)
 		return;
 	}
 
-	// mot de passe faux : on repond, puis on ferme des que le buffer est parti
 	if (msg.param[0] != _password)
 	{
 		sendNumeric(client, 464, "Password incorrect");
@@ -95,13 +90,12 @@ void Server::handlePass(Client& client, const Message& msg)
 }
 
 
-
-
-
-
+// PASS doit avoir ete fourni en premier. L'unicite est insensible a la casse.
+// Un changement en cours de session est diffuse a tous les salons du client, le
+// message portant l'ancien prefixe puisqu'il annonce qui change ; les
+// invitations en attente, nominatives, suivent le nouveau pseudo.
 void Server::handleNick(Client &client, const Message &msg)
 {
-	// le sujet impose PASS en premier
 	if (!client.getPass())
 	{
 		sendNumeric(client, 451, "You have not registered");
@@ -122,7 +116,6 @@ void Server::handleNick(Client &client, const Message &msg)
 		return;
 	}
 
-	// unicite insensible a la casse : "Bob" et "bob" sont le meme pseudo
 	Client *other = findClientByNick(nickName);
 	if (other != NULL && other != &client)
 	{
@@ -131,16 +124,13 @@ void Server::handleNick(Client &client, const Message &msg)
 	}
 
 	std::string oldNick = client.getNickName();
-	if (oldNick == nickName) // rien a changer, meme casse
+	if (oldNick == nickName)
 		return;
 
-	// changement en cours de session : tout le monde doit etre prevenu
 	if (client.getRegistred())
 	{
-		// le message annonce QUI change, donc il porte l'ancien prefixe
 		std::string line = ":" + buildPrefix(client) + " NICK :" + nickName;
 
-		// une invitation en attente est nominative : elle suit le nouveau pseudo
 		std::vector<Channel*> chans = getChannelsOf(&client);
 		for (size_t i = 0; i < chans.size(); i++)
 		{
@@ -160,7 +150,6 @@ void Server::handleNick(Client &client, const Message &msg)
 
 	checkRegister(client);
 }
-
 
 
 void Server::handleUser(Client& client, const Message& msg)
@@ -187,6 +176,5 @@ void Server::handleUser(Client& client, const Message& msg)
 
 	checkRegister(client);
 }
-
 
 

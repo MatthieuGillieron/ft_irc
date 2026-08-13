@@ -1,15 +1,15 @@
 #include "../header/Server.hpp"
 #include "../header/Message.hpp"
 
-// Aiguillage d'une commande deja parsee.
-// Trois etages : les commandes d'enregistrement, celles autorisees avant
-// l'enregistrement, puis tout le reste qui exige un client enregistre.
+// Aiguillage en trois etages : les commandes d'enregistrement, celles autorisees
+// avant d'etre enregistre, puis tout le reste derriere une barriere 451 unique.
+// CAP est ignore sans reponse : irssi l'envoie a la connexion pour negocier des
+// extensions, et nous n'en gerons aucune.
 void Server::dispatcher(Client* client, Message msg)
 {
 	if (msg.command.empty())
 		return;
 
-	// irssi envoie CAP a la connexion : on ne negocie aucune extension
 	if (msg.command == "CAP")
 		return;
 
@@ -28,13 +28,11 @@ void Server::dispatcher(Client* client, Message msg)
 		handleUser(*client, msg);
 		return;
 	}
-	// un client peut avoir besoin de PING avant d'etre enregistre
 	if (msg.command == "PING")
 	{
 		handlePing(*client, msg);
 		return;
 	}
-	// et il doit toujours pouvoir partir
 	if (msg.command == "QUIT")
 	{
 		handleQuit(*client, msg);
@@ -68,9 +66,7 @@ void Server::dispatcher(Client* client, Message msg)
 }
 
 
-// === RECHERCHE ===
-
-// recherche insensible a la casse : "#Test" et "#test" sont le meme salon.
+// Recherche insensible a la casse : "#Test" et "#test" designent le meme salon.
 // C'est aussi ce qui empeche JOIN d'en creer deux variantes.
 Channel* Server::findChannel(const std::string& name)
 {
@@ -83,9 +79,9 @@ Channel* Server::findChannel(const std::string& name)
 }
 
 
+// Le nom vide est refuse : il correspondrait a tout client pas encore nomme.
 Client* Server::findClientByNick(const std::string& nick)
 {
-	// sinon un pseudo vide correspondrait a tout client pas encore nomme
 	if (nick.empty())
 		return NULL;
 
@@ -98,8 +94,7 @@ Client* Server::findClientByNick(const std::string& nick)
 }
 
 
-// tous les salons dont ce client est membre
-// utilise par QUIT, par le changement de pseudo et par la deconnexion
+// Utilise par QUIT, par le changement de pseudo et par la deconnexion.
 std::vector<Channel*> Server::getChannelsOf(Client* client)
 {
 	std::vector<Channel*> out;

@@ -2,9 +2,10 @@
 #include "../../header/Server.hpp"
 
 
-// === KICK ===
-
 // KICK <salon> <pseudo>{,<pseudo>} [:<raison>]
+// La diffusion precede le retrait : l'exclu doit recevoir sa propre exclusion,
+// sinon son client reste affiche dans le salon. Le salon peut disparaitre en
+// cours de boucle si l'exclu en etait le dernier membre.
 void Server::handleKick(Client &client, const Message &msg)
 {
 	if (msg.param.size() < 2)
@@ -45,24 +46,20 @@ void Server::handleKick(Client &client, const Message &msg)
 			continue;
 		}
 
-		// diffuser avant de retirer : l'exclu doit recevoir sa propre exclusion,
-		// sinon son client reste affiche dans le salon
 		chan->broadcast(":" + buildPrefix(client) + " KICK " + chan->getName()
 			+ " " + target->getNickName() + " :" + reason);
 
 		leaveChannel(*target, chan);
 
-		// le salon a pu etre detruit si l'exclu etait le dernier membre
 		if (findChannel(msg.param[0]) == NULL)
 			return;
 	}
 }
 
 
-
-// === INVITE ===
-
 // INVITE <pseudo> <salon>
+// Sur un salon +i, seuls les operateurs peuvent inviter. La reponse 341 n'a pas
+// de trailing : <pseudo> <salon>.
 void Server::handleInvite(Client &client, const Message &msg)
 {
 	if (msg.param.size() < 2)
@@ -89,7 +86,6 @@ void Server::handleInvite(Client &client, const Message &msg)
 		sendNumeric(client, 442, chan->getName(), "You're not on that channel");
 		return;
 	}
-	// sur un salon +i, seuls les operateurs peuvent inviter
 	if (chan->isInviteOnly() && !chan->isModo(&client))
 	{
 		sendNumeric(client, 482, chan->getName(), "You're not channel operator");
@@ -103,7 +99,6 @@ void Server::handleInvite(Client &client, const Message &msg)
 
 	chan->addInvite(target->getNickName());
 
-	// 341 n'a pas de trailing : <pseudo> <salon>
 	sendNumeric(client, 341, target->getNickName() + " " + chan->getName(), "");
 	reply(*target, ":" + buildPrefix(client) + " INVITE " + target->getNickName()
 		+ " :" + chan->getName());

@@ -5,10 +5,6 @@
 #include <string>
 
 
-
-
-
-
 class Client
 {
     public:
@@ -16,8 +12,6 @@ class Client
 		~Client() {};
 
 
-
-		// GETTER - SETTER
         int getFd() const { return _fd; }
 		bool getPass() const { return _pass; }
 		bool getRegistred() const { return _registred; }
@@ -52,9 +46,6 @@ class Client
 		std::string _outBuffer;
 		bool _quitting;
 };
-
-
-
 
 
 #endif

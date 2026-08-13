@@ -2,11 +2,10 @@
 #include "../../header/Server.hpp"
 
 
-// TOPIC <salon>              -> consulte le sujet
-// TOPIC <salon> :<sujet>     -> le change ("TOPIC <salon> :" l'efface)
-//
-// La distinction tient au nombre de parametres : le parseur produit un
-// parametre vide pour un trailing vide, donc "TOPIC #x :" en a bien deux.
+// TOPIC <salon> consulte le sujet, TOPIC <salon> :<sujet> le change et
+// TOPIC <salon> : l'efface. La distinction tient au nombre de parametres : le
+// parseur produit un parametre vide pour un trailing vide, donc "TOPIC #x :" en
+// a bien deux. Le mode +t reserve la modification aux operateurs.
 void Server::handleTopic(Client &client, const Message &msg)
 {
 	if (msg.param.empty())
@@ -27,7 +26,6 @@ void Server::handleTopic(Client &client, const Message &msg)
 		return;
 	}
 
-	// consultation
 	if (msg.param.size() < 2)
 	{
 		if (chan->getTopic().empty())
@@ -37,7 +35,6 @@ void Server::handleTopic(Client &client, const Message &msg)
 		return;
 	}
 
-	// modification : le mode +t la reserve aux operateurs
 	if (chan->isTopicRestricted() && !chan->isModo(&client))
 	{
 		sendNumeric(client, 482, chan->getName(), "You're not channel operator");

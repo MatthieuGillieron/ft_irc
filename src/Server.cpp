@@ -1,26 +1,30 @@
 
 #include "../header/Server.hpp"
 
-// Le message d'adieu est envoye par la phase d'arret de run() avant d'arriver
-// ici : le destructeur ne fait plus aucune I/O, tout passe par poll().
+// Le message d'adieu est envoye par la phase d'arret de run() : le destructeur
+// ne fait aucune I/O, tout passe par poll().
 Server::~Server()
 {
-	for(size_t i = 0; i < _clients.size(); i++)
+	for (size_t i = 0; i < _clients.size(); i++)
 	{
 		close(_clients[i]->getFd());
-		delete(_clients[i]);
+		delete _clients[i];
 	}
-	for(std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+	for (std::map<std::string, Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
 		delete it->second;
 	if (_listenFd != -1)
 		close(_listenFd);
 }
 
 
-// Un SEUL poll() dans tout le projet, celui de cette boucle.
-// L'extinction n'a donc pas sa propre boucle d'attente : elle bascule la meme
-// dans un mode "closing" ou l'on ne fait plus qu'ecrire, jusqu'a ce que les
-// buffers de sortie soient vides.
+// Un SEUL poll() dans tout le projet, celui de cette boucle. L'extinction n'a
+// donc pas sa propre boucle d'attente : elle bascule celle-ci dans un mode
+// "closing" ou l'on cesse d'accepter et de lire pour ne plus que vider les
+// buffers de sortie, borne a dix tours pour qu'un client muet ne bloque rien.
+// POLLOUT n'est demande que si un buffer est non vide, sans quoi poll
+// reviendrait immediatement a chaque tour. Les deconnexions sont differees en
+// fin de tour : les traiter dans la boucle invaliderait les indices de _pollfds
+// en cours de parcours.
 bool Server::run()
 {
 	if (!setupSocket())
@@ -38,7 +42,6 @@ bool Server::run()
 
 	while (true)
 	{
-		// premier tour apres le signal : on empile le message d'adieu
 		if (g_shutdown && !closing)
 		{
 			closing = true;
@@ -52,7 +55,6 @@ bool Server::run()
 		{
 			if (_pollfds[y].fd == _listenFd)
 			{
-				// en phase d'arret on n'accepte plus personne
 				_pollfds[y].events = closing ? 0 : POLLIN;
 				continue;
 			}
@@ -68,16 +70,12 @@ bool Server::run()
 			if (hasOut)
 				pending = true;
 
-			// on ne demande POLLOUT que si on a quelque chose a ecrire :
-			// sinon poll reviendrait immediatement a chaque tour
 			if (closing)
 				_pollfds[y].events = hasOut ? POLLOUT : 0;
 			else
 				_pollfds[y].events = hasOut ? (POLLIN | POLLOUT) : POLLIN;
 		}
 
-		// plus rien a envoyer, ou un client qui ne lit plus : on sort.
-		// La borne evite qu'un client bloque l'arret du serveur.
 		if (closing && (!pending || ++closingRounds > 10))
 			break;
 
@@ -101,7 +99,6 @@ bool Server::run()
 
 			if (closing)
 			{
-				// pendant l'extinction on n'ecoute plus, on ne fait que vider
 				if (_pollfds[i].revents & POLLOUT)
 					flushClient(_pollfds[i].fd);
 				continue;
@@ -118,7 +115,6 @@ bool Server::run()
 				flushClient(_pollfds[i].fd);
 		}
 
-		// un client marque "quitting" part une fois sa derniere reponse envoyee
 		for (size_t c = 0; c < _clients.size(); c++)
 		{
 			if (_clients[c]->isQuitting() && _clients[c]->getOutBuffer().empty())
@@ -134,11 +130,13 @@ bool Server::run()
 }
 
 
+// Un echec doit arreter le serveur : sans ca run() enchainerait sur poll() avec
+// un descripteur invalide. Le cas se produit des qu'on relance sur un port
+// occupe. SO_REUSEADDR evite d'attendre l'expiration du TIME_WAIT du noyau.
 bool Server::setupSocket()
 {
 	_listenFd = socket(AF_INET, SOCK_STREAM, 0);
-
-	if(_listenFd == -1)
+	if (_listenFd == -1)
 	{
 		std::cerr << C_ERR << "[!] socket() error: " << strerror(errno) << RESET << std::endl;
 		return false;
@@ -151,20 +149,22 @@ bool Server::setupSocket()
 
 	int opt = 1;
 	setsockopt(_listenFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-	if(bind(_listenFd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1 )
+
+	if (bind(_listenFd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1)
 	{
 		std::cerr << C_ERR << "[!] bind() error: " << strerror(errno) << RESET << std::endl;
 		close(_listenFd);
 		_listenFd = -1;
 		return false;
 	}
-	if(listen(_listenFd, 5) == -1)
+	if (listen(_listenFd, 5) == -1)
 	{
 		std::cerr << C_ERR << "[!] listen() error: " << strerror(errno) << RESET << std::endl;
 		close(_listenFd);
 		_listenFd = -1;
 		return false;
 	}
+
 	fcntl(_listenFd, F_SETFL, O_NONBLOCK);
 	return true;
 }
