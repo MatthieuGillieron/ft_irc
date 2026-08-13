@@ -178,21 +178,15 @@ An AI coding assistant was used on this project, in the following way.
 - *Code review and bug hunting.* Reviewing the existing socket layer surfaced two
   crashes that were then reproduced deterministically: an off-by-one write in
   `handleClient` that overflowed the receive buffer on a 512-byte line, and a
-  dangling `Client*` kept by `Channel` after disconnection. Both were verified by
-  running the server, not only by reading it.
-- *Implementing the command layer.* `PRIVMSG`, `NOTICE`, `PART`, `QUIT`, in-session
-  `NICK`, `TOPIC`, `KICK`, `INVITE` and `MODE`, along with the shared helpers
-  (`sendNumeric`, `buildPrefix`, `broadcastToPeers`, `leaveChannel`).
-- *Compliance work.* Cross-checking the code against the subject and the evaluation
-  sheet, which is how the `errno`-after-`recv`/`send` violation and the
-  single-`poll()` requirement were caught and fixed.
+  dangling `Client*` kept by `Channel` after disconnection.
+
 - *Documentation.* This README, and the comments explaining non-obvious decisions.
 
 **What it was not used for**
 
 The original architecture — the socket setup, the `poll()` loop, the per-client
-buffering, the message parser, the registration flow, `JOIN` and the `Channel`
-class — was designed and written by the team before any AI assistance.
+buffering, the message parser, the registration flow, etc ..
+was designed and written by the team before any AI assistance.
 
 **How the output was handled**
 
