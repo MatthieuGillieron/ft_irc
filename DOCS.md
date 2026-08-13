@@ -1,483 +1,431 @@
-# ft_irc — Documentation complète
+# ft_irc — Cheatsheets
 
-> Construire un serveur IRC en C++98 capable de gérer plusieurs clients en simultané, sans fork, avec **un seul** `poll()` pour tout.
+Aide-mémoire du serveur. Tout ce qui est listé ici est réellement implémenté et
+testé : rien de générique, rien d'aspirationnel.
 
----
-
-## 1. C'est quoi, au juste
-
-IRC (Internet Relay Chat) est un protocole de chat **texte**, basé sur **TCP**, qui date de 1988. Le principe :
-
-- Un **serveur** central écoute sur un port.
-- Des **clients** s'y connectent, s'authentifient, choisissent un pseudo, rejoignent des **channels** (salons), et s'envoient des messages.
-- Tout passe par des **messages texte terminés par `\r\n`** (CRLF).
-
-Ton job : coder le **serveur**. Tu ne codes PAS de client — tu utilises un vrai client IRC existant (irssi, HexChat, WeeChat, ou `nc` pour débugger) pour parler à ton serveur. C'est ça qui rend le projet vivant : à l'éval, l'examinateur ouvre un vrai client et discute avec ton serveur.
-
-**Les deux RFC de référence :**
-- **RFC 1459** — le protocole IRC original (le plus pertinent pour 42).
-- **RFC 2812** — version mise à jour, plus précise sur les réponses numériques.
-
-Tu n'as pas à tout implémenter. Le sujet définit un sous-ensemble. Mais quand tu as un doute sur le format exact d'une réponse, la RFC tranche.
+- [1. Démarrage](#1-démarrage)
+- [2. Enregistrement](#2-enregistrement)
+- [3. Commandes de base](#3-commandes-de-base)
+- [4. Commandes opérateur](#4-commandes-opérateur)
+- [5. Modes de salon](#5-modes-de-salon)
+- [6. Gérer les grades](#6-gérer-les-grades)
+- [7. irssi et nc](#7-irssi-et-nc)
+- [8. Codes numériques](#8-codes-numériques)
+- [9. Recettes](#9-recettes)
+- [10. Dépannage](#10-dépannage)
 
 ---
 
-## 2. Les règles du projet (le cadre 42)
+## 1. Démarrage
 
-### Contraintes de base
-- **C++98 strict** : `c++ -Wall -Wextra -Werror -std=c++98`
-- **Makefile** avec les règles : `all`, `clean`, `fclean`, `re` (et pas de relink inutile)
-- **Exécutable** : `ircserv`
-- **Lancement** : `./ircserv <port> <password>`
-  - `port` : le port d'écoute
-  - `password` : mot de passe que les clients doivent fournir pour se connecter
+| Quoi | Commande |
+|---|---|
+| Compiler | `make` · `make re` · `make fclean` |
+| Lancer | `./ircserv <port> <password>` |
+| Exemple | `./ircserv 6667 pass` |
+| Arrêter | `Ctrl-C` (SIGINT) ou `Ctrl-\` (SIGQUIT) |
 
-### Ce qui est INTERDIT
-- **Aucun fork.** Tout en mono-process, mono-thread (le multi-client se fait via le multiplexage I/O, pas via des process).
-- Pas de blocage : **tous les fd doivent être non-bloquants**.
-- Pas de busy-wait / lecture-écriture en dehors du `poll()`.
+**Contraintes** : port entre 1024 et 65535, mot de passe non vide. Sinon code de
+sortie `1`.
 
-### La règle qui peut te coûter 0 à l'éval
-> Tu dois utiliser **un seul `poll()`** (ou équivalent : `select()`, `epoll()`, `kqueue()`) pour **toutes** les opérations I/O : lire, écrire, **et** écouter les nouvelles connexions.
+### Se connecter
 
-Traduction concrète : tu ne fais **jamais** un `recv()` ou un `send()` "à l'aveugle". Tu attends que `poll()` te dise que le fd est prêt (`POLLIN` pour lire, `POLLOUT` pour écrire). Si l'examinateur voit un `read`/`write`/`recv`/`send` qui n'est pas gardé par `poll()`, c'est sanctionné.
+| Client | Commande |
+|---|---|
+| nc | `nc 127.0.0.1 6667` |
+| nc (CRLF forcés) | `nc -C 127.0.0.1 6667` |
+| irssi | `irssi -c 127.0.0.1 -p 6667 -w pass -n alice` |
+| irssi (déjà lancé) | `/connect 127.0.0.1 6667 pass alice` |
 
-### Le piège `fcntl` sur macOS
-Sur macOS, le seul moyen de rendre un fd non-bloquant autorisé par le sujet est :
+Le serveur accepte les fins de ligne `\n` **et** `\r\n`, donc `-C` est optionnel.
 
-```cpp
-fcntl(fd, F_SETFL, O_NONBLOCK);
-```
+### Logs du serveur
 
-**Aucun autre flag, aucun autre usage de `fcntl` n'est autorisé.** Sur Linux tu pourrais passer `O_NONBLOCK` directement à `accept4`, mais reste sur la forme ci-dessus pour être portable et conforme.
-
-### Fonctions autorisées
-`socket`, `close`, `setsockopt`, `getsockname`, `getprotobyname`, `gethostbyname`, `getaddrinfo`, `freeaddrinfo`, `bind`, `connect`, `listen`, `accept`, `htons`, `htonl`, `ntohs`, `ntohl`, `inet_addr`, `inet_ntoa`, `send`, `recv`, `signal`, `sigaction`, `lseek`, `fstat`, `fcntl`, `poll` (ou son équivalent).
-
-### Le client de référence
-Tu **choisis un client de référence** (irssi est le choix classique) et tu t'assures que ton serveur fonctionne parfaitement avec lui. À l'éval, c'est avec **ce client-là** que l'examinateur testera. Note bien lequel dans ton README.
+| Trace | Sens |
+|---|---|
+| `[*] ircserv listening on port N` | Démarrage réussi |
+| `[+] New connexion` | Un client vient d'être accepté |
+| `[-] Client disconnected (nick)` | Départ, pseudo affiché s'il est connu |
+| `[!] bind() error: ...` | Port déjà occupé, le serveur s'arrête |
+| `[*] Server shutting down...` | Signal reçu, extinction en cours |
 
 ---
 
-## 3. Les fonctionnalités à livrer (partie obligatoire)
+## 2. Enregistrement
 
-Le serveur doit, au minimum :
-
-1. **Authentifier** un client avec le mot de passe.
-2. Permettre de **définir un nickname et un username**.
-3. Permettre de **rejoindre un channel**.
-4. Envoyer et recevoir des **messages privés** (PRIVMSG).
-5. **Diffuser** les messages d'un channel à tous ses membres.
-6. Gérer deux types d'utilisateurs : **opérateurs** et **utilisateurs normaux**.
-7. Implémenter les **commandes opérateur** :
-   - `KICK` — éjecter un client d'un channel
-   - `INVITE` — inviter un client dans un channel
-   - `TOPIC` — voir / changer le sujet du channel
-   - `MODE` — changer les modes du channel (voir §7)
-
----
-
-## 4. Architecture réseau : les sockets
-
-C'est le socle. Voici la séquence côté serveur, dans l'ordre.
-
-```
-socket()      → crée le fd d'écoute (point d'entrée TCP)
-setsockopt()  → SO_REUSEADDR (relancer le serveur sans attendre le TIME_WAIT)
-bind()        → associe le socket au port/adresse
-listen()      → passe le socket en mode écoute (file d'attente des connexions)
-fcntl()       → rend le socket non-bloquant
-... puis dans la boucle ...
-accept()      → accepte une nouvelle connexion → nouveau fd client
-```
-
-```cpp
-int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-
-int opt = 1;
-setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-struct sockaddr_in addr;
-addr.sin_family = AF_INET;
-addr.sin_addr.s_addr = INADDR_ANY;    // écoute sur toutes les interfaces
-addr.sin_port = htons(port);          // /!\ htons : byte order réseau
-
-bind(server_fd, (struct sockaddr*)&addr, sizeof(addr));
-listen(server_fd, SOMAXCONN);
-fcntl(server_fd, F_SETFL, O_NONBLOCK);
-```
-
-**Concepts clés à maîtriser pour l'oral :**
-- **`htons` / `htonl`** : le réseau utilise le *big-endian* (network byte order). Ta machine est probablement *little-endian*. Ces fonctions convertissent. Oublie-les et ton serveur écoute sur le mauvais port.
-- **`SO_REUSEADDR`** : sans ça, après un crash tu dois attendre ~1 min (TIME_WAIT) avant de réutiliser le port.
-- **Le fd d'écoute n'est pas un fd de communication.** `accept()` te rend un **nouveau** fd, dédié à ce client. Le fd d'écoute, lui, ne sert qu'à accepter.
-
----
-
-## 5. La boucle d'événements : le cœur du projet
-
-Tout le projet tourne autour d'**un seul `poll()`**. Tu maintiens un tableau de `struct pollfd`, un par fd actif (le fd d'écoute + un par client). À chaque tour de boucle, `poll()` te dit quels fds sont prêts.
-
-```
-struct pollfd {
-    int   fd;        // le file descriptor à surveiller
-    short events;    // ce que JE veux surveiller (POLLIN | POLLOUT)
-    short revents;   // ce qui s'est RÉELLEMENT passé (rempli par poll)
-};
-```
-
-### Schéma de la boucle
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  poll(&fds[0], nfds, -1)   ← bloque jusqu'à un événement  │
-└─────────────────────────────────────────────────────────┘
-                          │
-          ┌───────────────┼────────────────┐
-          ▼               ▼                 ▼
-   fd d'écoute      fd client           fd client
-   POLLIN ?         POLLIN ?            POLLOUT ?
-      │                │                    │
-      ▼                ▼                    ▼
-   accept()         recv()              send()
-   → nouveau fd     → bufferise         → flush le
-   → ajoute aux     → extrait les         buffer de
-     fds              lignes \r\n          sortie
-                    → parse + exécute
-                          │
-                  ┌───────┴────────┐
-                  ▼                ▼
-            recv() == 0       recv() > 0
-            → déconnexion     → traite les commandes
-            → close + retire
-              des fds
-```
-
-### Squelette
-
-```cpp
-std::vector<struct pollfd> fds;
-// fds[0] = le socket d'écoute, events = POLLIN
-
-while (running)
-{
-    int ready = poll(fds.data(), fds.size(), -1);   // -1 = bloque indéfiniment
-    if (ready < 0) { /* gérer EINTR / signal */ continue; }
-
-    for (size_t i = 0; i < fds.size(); ++i)
-    {
-        if (fds[i].revents & POLLIN)
-        {
-            if (fds[i].fd == server_fd)
-                acceptNewClient();      // nouvelle connexion
-            else
-                receiveFromClient(fds[i].fd);  // données entrantes
-        }
-        if (fds[i].revents & POLLOUT)
-            flushClientOutput(fds[i].fd);  // données à envoyer
-    }
-}
-```
-
-### Pourquoi `POLLOUT` ?
-Quand tu veux envoyer un message à un client, tu ne fais pas `send()` direct. Le socket peut être plein (le client lit lentement). Tu mets le message dans un **buffer de sortie** propre à ce client, et tu actives `POLLOUT` dans ses `events`. Quand `poll()` te dit `POLLOUT`, tu fais `send()`. Quand le buffer est vidé, tu désactives `POLLOUT`.
-
-> En pratique, beaucoup d'implémentations 42 envoient directement avec un `send()` gardé par le test que le fd est prêt. C'est tolérable pour le mandatory si les messages restent courts, mais la version "buffer + POLLOUT" est la propre et celle qui résiste aux questions de l'examinateur. Choisis et assume.
-
----
-
-## 6. Le protocole IRC : format des messages
-
-C'est LA partie que tout le monde sous-estime. Un message IRC, c'est une ligne de texte structurée, terminée par `\r\n`.
-
-### Grammaire (simplifiée)
-
-```
-[ ":" <prefix> SPACE ] <command> [ <params> ] "\r\n"
-```
-
-- **`prefix`** (optionnel, commence par `:`) — l'expéditeur. Le **client n'en envoie jamais** ; c'est le **serveur** qui en ajoute un dans ses réponses pour dire "ce message vient de tel utilisateur".
-- **`command`** — soit un mot (`NICK`, `JOIN`, `PRIVMSG`), soit un code numérique à 3 chiffres (`001`, `433`).
-- **`params`** — jusqu'à 15 paramètres séparés par des espaces. Le **dernier** peut être un *trailing* : il commence par `:` et **peut contenir des espaces** (utile pour les messages).
-
-### Exemples client → serveur
-
-```
-PASS motdepasse\r\n
-NICK magillie\r\n
-USER mag 0 * :Matthieu Gillieron\r\n
-JOIN #42lausanne\r\n
-PRIVMSG #42lausanne :Salut tout le monde !\r\n
-PRIVMSG bob :message privé direct\r\n
-```
-
-### Exemples serveur → client (avec prefix)
-
-```
-:magillie!mag@localhost JOIN #42lausanne\r\n
-:magillie!mag@localhost PRIVMSG #42lausanne :Salut tout le monde !\r\n
-:irc.42.fr 001 magillie :Welcome to the IRC network\r\n
-```
-
-Le prefix `magillie!mag@localhost` suit le format `nick!user@host`. C'est comme ça que le client sait qui parle.
-
-### Le parsing, étape par étape
-1. Tu reçois des octets via `recv()` et tu les **accumules** dans le buffer du client.
-2. Tu cherches `\r\n` dans le buffer. Tant qu'il y en a un, tu **extrais une ligne complète** et tu la traites.
-3. Pour chaque ligne : tu sépares `command` et `params` (en gérant le `:` du trailing).
-4. Tu dispatches vers le bon handler (`NICK`, `JOIN`, etc.).
-
-> **Sois tolérant sur la fin de ligne.** Certains clients/`nc` envoient `\n` seul au lieu de `\r\n`. Accepte les deux pour ne pas galérer en test.
-
----
-
-## 7. Les commandes à implémenter (détail)
-
-### Phase d'enregistrement (registration)
-Avant qu'un client soit "enregistré" et puisse tout faire, il doit fournir, dans l'ordre logique :
-
-| Commande | Rôle | Erreur si manquant/faux |
-|---|---|---|
-| `PASS <password>` | Mot de passe du serveur | `464 ERR_PASSWDMISMATCH` |
-| `NICK <nickname>` | Pseudo unique | `431`, `432`, `433` |
-| `USER <user> <mode> <unused> :<realname>` | Identité | `461 ERR_NEEDMOREPARAMS` |
-
-Tant que `PASS` + `NICK` + `USER` ne sont pas tous validés, le client n'est **pas enregistré** → la plupart des autres commandes répondent `451 ERR_NOTREGISTERED`. Une fois les trois OK, tu envoies la séquence de bienvenue (`001`, `002`, `003`, `004`).
-
-### Commandes principales
+**Ordre obligatoire.** `PASS` doit venir en premier, sinon `451`.
 
 | Commande | Syntaxe | Effet |
 |---|---|---|
-| `NICK` | `NICK <nick>` | Change/définit le pseudo. Vérifie l'unicité. |
-| `USER` | `USER <u> 0 * :<realname>` | Définit username + realname. |
-| `JOIN` | `JOIN <#channel> [key]` | Rejoint (ou crée) un channel. Le créateur devient opérateur. |
-| `PART` | `PART <#channel> [:raison]` | Quitte un channel. |
-| `PRIVMSG` | `PRIVMSG <cible> :<texte>` | Message à un user ou un channel. |
-| `NOTICE` | `NOTICE <cible> :<texte>` | Comme PRIVMSG mais ne génère **jamais** de réponse d'erreur auto. |
-| `QUIT` | `QUIT [:raison]` | Déconnexion propre. |
-| `PING` / `PONG` | `PING <token>` | Keep-alive. Le serveur doit répondre `PONG`. **À ne pas oublier** : irssi envoie des PING, si tu ne réponds pas il coupe. |
+| `PASS` | `PASS <password>` | Mot de passe du serveur. Faux → `464` puis fermeture |
+| `NICK` | `NICK <pseudo>` | Définit le pseudo. Unicité insensible à la casse |
+| `USER` | `USER <user> 0 * :<realname>` | Identité. 4 paramètres exigés |
 
-### Commandes opérateur (obligatoires)
+Les trois validés → le serveur envoie `001` `002` `003` `004`, le client est
+enregistré.
+
+### Règles du pseudo
+
+| Règle | Détail |
+|---|---|
+| Longueur | 1 à 9 caractères — au-delà `432` |
+| Premier caractère | Une lettre, ou l'un de `[` `]` `\` `_` `^` `{` `}` `\|` `` ` `` |
+| Suivants | Lettres, chiffres, les mêmes spéciaux, et `-` |
+| Unicité | Insensible à la casse : `Bob` == `bob` → `433` |
+
+### Commandes autorisées avant l'enregistrement
+
+| Commande | Note |
+|---|---|
+| `PASS` `NICK` `USER` | Les trois de l'enregistrement |
+| `PING` | Certains clients vérifient le serveur avant de s'authentifier |
+| `QUIT` | On doit toujours pouvoir partir |
+| `CAP` | Ignorée silencieusement, aucune extension négociée |
+
+**Toute autre commande avant l'enregistrement → `451`.**
+
+---
+
+## 3. Commandes de base
 
 | Commande | Syntaxe | Effet |
 |---|---|---|
-| `KICK` | `KICK <#chan> <user> [:raison]` | Éjecte un user du channel. Op only. |
-| `INVITE` | `INVITE <user> <#chan>` | Invite un user (nécessaire si le channel est en mode `+i`). |
-| `TOPIC` | `TOPIC <#chan> [:sujet]` | Sans argument → affiche le topic. Avec → le change (selon mode `+t`). |
-| `MODE` | `MODE <#chan> <flags> [args]` | Change les modes du channel (voir ci-dessous). |
+| `JOIN` | `JOIN <#salon> [<clé>]` | Rejoint ou crée. Le créateur devient opérateur |
+| `PART` | `PART <#salon>{,<#salon>} [:<raison>]` | Quitte un ou plusieurs salons |
+| `PRIVMSG` | `PRIVMSG <cible>{,<cible>} :<texte>` | Message à un salon ou à un utilisateur |
+| `NOTICE` | `NOTICE <cible>{,<cible>} :<texte>` | Idem, mais **n'émet jamais d'erreur** |
+| `QUIT` | `QUIT [:<raison>]` | Déconnexion, annoncée aux salons |
+| `PING` | `PING <token>` | Le serveur répond `PONG` |
+| `NICK` | `NICK <nouveau>` | Change le pseudo, diffusé à tous les salons |
 
-### Les modes de channel (via `MODE`)
-Tu dois gérer **ces cinq modes**, activables avec `+` et désactivables avec `-` :
+### Ce qui accepte les listes séparées par virgules
 
-| Mode | Activé par | Effet |
+| Commande | Listes ? |
+|---|---|
+| `PART #a,#b` | ✅ oui |
+| `PRIVMSG bob,carol :salut` | ✅ oui |
+| `KICK #dev bob,carol` | ✅ sur les pseudos, **un seul salon** |
+| `JOIN #a,#b` | ❌ non — un salon à la fois |
+
+### Qui reçoit quoi
+
+| Action | L'émetteur | Les autres membres |
 |---|---|---|
-| `i` | `MODE #chan +i` | **Invite-only** : on ne peut JOIN que si invité. |
-| `t` | `MODE #chan +t` | **Topic restreint** : seuls les ops peuvent changer le topic. |
-| `k` | `MODE #chan +k <clé>` | **Clé** (mot de passe) du channel. JOIN requiert la clé. |
-| `o` | `MODE #chan +o <user>` | Donne/retire le **statut opérateur** à un user. |
-| `l` | `MODE #chan +l <n>` | **Limite** d'utilisateurs dans le channel. |
+| `JOIN #dev` | Reçoit son propre JOIN, puis `353` + `366` | Reçoivent le JOIN |
+| `PRIVMSG #dev :x` | **Ne reçoit rien** | Reçoivent le message |
+| `PRIVMSG bob :x` | **Ne reçoit rien** | Seul bob reçoit |
+| `PART #dev` | Reçoit son propre PART | Reçoivent le PART |
+| `QUIT` | Reçoit `ERROR :Closing link` | Reçoivent le QUIT, **une seule fois** |
+| `NICK bobby` | Reçoit son propre NICK | Reçoivent le NICK |
+| `TOPIC #dev :x` | Reçoit le TOPIC | Reçoivent le TOPIC |
+| `KICK #dev bob` | Reçoit le KICK | Reçoivent le KICK, **bob compris** |
 
-Exemple : `MODE #42lausanne +itk supersecret` → invite-only + topic restreint + clé "supersecret".
+Salon détruit dès que son dernier membre part, avec ses modes et sa liste
+d'invités.
 
 ---
 
-## 8. Les réponses numériques essentielles
+## 4. Commandes opérateur
 
-Le serveur répond souvent par des **codes à 3 chiffres**. Format :
-`:<serveur> <code> <nick> <params> [:message]\r\n`
+| Commande | Syntaxe | Opérateur requis ? |
+|---|---|---|
+| `TOPIC` | `TOPIC <#salon>` | Non — affiche le sujet |
+| `TOPIC` | `TOPIC <#salon> :<sujet>` | Seulement si mode `+t` |
+| `TOPIC` | `TOPIC <#salon> :` | Efface le sujet |
+| `KICK` | `KICK <#salon> <pseudo>{,<pseudo>} [:<raison>]` | **Oui** — sinon `482` |
+| `INVITE` | `INVITE <pseudo> <#salon>` | Seulement si mode `+i` |
+| `MODE` | `MODE <#salon>` | Non — affiche les modes (`324`) |
+| `MODE` | `MODE <#salon> <flags> [args]` | **Oui** — sinon `482` |
 
-**Réponses de succès (RPL_) :**
+**`MODE <#salon>` exige d'être membre** : la réponse `324` révèle la clé du salon.
+
+---
+
+## 5. Modes de salon
+
+| Mode | Argument au `+` | Argument au `-` | Effet |
+|---|---|---|---|
+| `i` | — | — | Salon sur invitation seulement |
+| `t` | — | — | Seuls les opérateurs changent le sujet |
+| `k` | la clé | — | Protège l'entrée par une clé |
+| `o` | le pseudo | le pseudo | Donne / retire le grade opérateur |
+| `l` | le nombre | — | Limite le nombre de membres |
+
+### Exemples
+
+| Commande | Effet |
+|---|---|
+| `MODE #dev +i` | Invitation obligatoire |
+| `MODE #dev -i` | Salon rouvert à tous |
+| `MODE #dev +t` | Sujet réservé aux opérateurs |
+| `MODE #dev +k secret` | Clé `secret` posée |
+| `MODE #dev -k` | Clé retirée — pas d'argument |
+| `MODE #dev +l 10` | 10 membres maximum |
+| `MODE #dev -l` | Limite retirée — pas d'argument |
+| `MODE #dev +o bob` | bob devient opérateur |
+| `MODE #dev -o bob` | bob redevient membre simple |
+| `MODE #dev +ok-l bob secret` | Enchaîné : `+o bob`, `+k secret`, `-l` |
+| `MODE #dev` | Affiche par ex. `+itk secret` |
+
+### Règles du parsing
+
+| Point | Comportement |
+|---|---|
+| Signe courant | S'applique jusqu'au signe suivant |
+| Arguments | Consommés dans l'ordre d'arrivée des flags qui en demandent |
+| Flag inconnu | `472`, les autres flags de la ligne sont quand même appliqués |
+| Argument manquant | `461`, le flag est ignoré |
+| `+l abc` ou `+l 0` | Ignoré silencieusement, rien n'est diffusé |
+| Diffusion | Seuls les changements **réellement appliqués** sont annoncés |
+
+---
+
+## 6. Gérer les grades
+
+Il n'y a qu'un seul grade : **opérateur de salon**, marqué `@` devant le pseudo.
+
+| Objectif | Commande | irssi |
+|---|---|---|
+| Devenir opérateur | Créer le salon : `JOIN #neuf` | `/join #neuf` |
+| Promouvoir quelqu'un | `MODE #dev +o bob` | `/mode #dev +o bob` ou `/op bob` |
+| Rétrograder quelqu'un | `MODE #dev -o bob` | `/mode #dev -o bob` ou `/deop bob` |
+| Promouvoir et poser une clé | `MODE #dev +ok bob secret` | `/mode #dev +ok bob secret` |
+| Exclure quelqu'un | `KICK #dev bob :raison` | `/kick bob raison` |
+| Exclure plusieurs | `KICK #dev bob,carol :raison` | — |
+| Inviter sur un salon `+i` | `INVITE dave #dev` | `/invite dave #dev` |
+| Voir qui est opérateur | Rejoindre le salon, lire le `353` | `/join #dev` |
+
+### Ce qu'un opérateur peut faire, un membre non
+
+| Action | Membre | Opérateur |
+|---|---|---|
+| Parler, `PART`, `TOPIC` en lecture | ✅ | ✅ |
+| `TOPIC` en écriture si `+t` | ❌ `482` | ✅ |
+| `KICK` | ❌ `482` | ✅ |
+| `MODE` en écriture | ❌ `482` | ✅ |
+| `INVITE` sur un salon `+i` | ❌ `482` | ✅ |
+| `INVITE` sur un salon normal | ✅ | ✅ |
+
+### Points à connaître
+
+| Situation | Comportement |
+|---|---|
+| Créateur du salon | Devient opérateur automatiquement |
+| L'opérateur part | Le salon **n'a plus d'opérateur**, aucune promotion automatique |
+| Dernier membre part | Salon détruit ; le prochain à le créer sera opérateur |
+| Cible absente du salon | `441` |
+| Cible inconnue du serveur | `441` sur `MODE +o`, `401` sur `KICK` |
+| Aucun grade serveur | Pas d'`OPER`, pas d'admin global — hors sujet |
+
+---
+
+## 7. irssi et nc
+
+Dans `nc` on tape les commandes **brutes**, sans `/`. irssi les fabrique.
+
+| Objectif | irssi | nc |
+|---|---|---|
+| Se connecter | `/connect 127.0.0.1 6667 pass` | `nc 127.0.0.1 6667` puis `PASS pass` |
+| Pseudo | `/nick alice` | `NICK alice` |
+| Identité | *(automatique)* | `USER alice 0 * :Alice` |
+| Rejoindre | `/join #dev` | `JOIN #dev` |
+| Rejoindre avec clé | `/join #dev secret` | `JOIN #dev secret` |
+| Parler au salon | *(taper le texte)* | `PRIVMSG #dev :salut` |
+| Message privé | `/msg bob salut` | `PRIVMSG bob :salut` |
+| Notice | `/notice #dev avis` | `NOTICE #dev :avis` |
+| Voir le sujet | `/topic` | `TOPIC #dev` |
+| Changer le sujet | `/topic Nouveau` | `TOPIC #dev :Nouveau` |
+| Quitter le salon | `/part` | `PART #dev` |
+| Exclure | `/kick bob raison` | `KICK #dev bob :raison` |
+| Inviter | `/invite dave` | `INVITE dave #dev` |
+| Promouvoir | `/op bob` | `MODE #dev +o bob` |
+| Rétrograder | `/deop bob` | `MODE #dev -o bob` |
+| Voir les modes | `/mode #dev` | `MODE #dev` |
+| Se déconnecter | `/quit :bye` | `QUIT :bye` |
+| Envoyer du brut | `/quote <ligne>` | *(c'est déjà du brut)* |
+
+### Non implémentées — renvoient `421`
+
+`NAMES` · `WHOIS` · `LIST` · `WHO` · `AWAY` · `OPER` · `MOTD`
+
+irssi les propose, le sujet ne les exige pas. Ne pas les taper par réflexe.
+
+### Navigation irssi
+
+| Action | Touche |
+|---|---|
+| Fenêtre 1 à 10 | `Alt+1` … `Alt+0` |
+| Suivante / précédente | `Ctrl+N` / `Ctrl+P` |
+| Où ça bouge | `Alt+A` |
+| Par commande | `/window 2` |
+| Fermer la fenêtre | `/window close` |
+| Défiler | `PgUp` / `PgDn` |
+| Quitter irssi | `/quit` — **pas `Ctrl+C`** |
+
+### Réglages irssi à faire une fois
+
+| Commande | Effet |
+|---|---|
+| `/set autocreate_own_query ON` | Ouvre une fenêtre quand **tu** envoies un privé |
+| `/set autocreate_query_level MSGS` | Ouvre une fenêtre quand **tu reçois** un privé |
+| `/rawlog open /tmp/raw.log` | Journalise tout le protocole brut |
+| `/save` | Rend les réglages permanents |
+
+---
+
+## 8. Codes numériques
+
+Format : `:ircserv <code> <destinataire> [params] :<texte>`
+
+### Bienvenue — envoyés une fois l'enregistrement terminé
+
+| Code | Nom | Texte |
+|---|---|---|
+| `001` | RPL_WELCOME | `Welcome to the Internet Relay Network <nick>!<user>@localhost` |
+| `002` | RPL_YOURHOST | `Your host is ircserv, running version 1.0` |
+| `003` | RPL_CREATED | `This server was created recently` |
+| `004` | RPL_MYINFO | `ircserv 1.0 o itkol` — pas de trailing |
+
+### Réponses de commande
 
 | Code | Nom | Quand |
 |---|---|---|
-| 001 | RPL_WELCOME | Fin de l'enregistrement |
-| 332 | RPL_TOPIC | Topic d'un channel |
-| 331 | RPL_NOTOPIC | Channel sans topic |
-| 353 | RPL_NAMREPLY | Liste des users d'un channel (après JOIN) |
-| 366 | RPL_ENDOFNAMES | Fin de la liste |
-| 324 | RPL_CHANNELMODEIS | Modes actuels du channel |
-| 341 | RPL_INVITING | Confirmation d'invitation |
+| `324` | RPL_CHANNELMODEIS | `MODE <#salon>` sans flag |
+| `331` | RPL_NOTOPIC | `TOPIC` alors qu'aucun sujet n'est défini |
+| `332` | RPL_TOPIC | `TOPIC` en lecture, ou à l'entrée dans le salon |
+| `341` | RPL_INVITING | Confirmation à celui qui invite — pas de trailing |
+| `353` | RPL_NAMREPLY | Liste des membres après un `JOIN`, `@` devant les opérateurs |
+| `366` | RPL_ENDOFNAMES | Fin de la liste |
 
-**Erreurs (ERR_) — les plus fréquentes à l'éval :**
+### Erreurs — cibles et paramètres
+
+| Code | Nom | Quand | Émis par |
+|---|---|---|---|
+| `401` | ERR_NOSUCHNICK | Pseudo inconnu | `PRIVMSG` `INVITE` |
+| `403` | ERR_NOSUCHCHANNEL | Salon inexistant, ou nom sans `#` | `JOIN` `PART` `PRIVMSG` `TOPIC` `KICK` `MODE` |
+| `404` | ERR_CANNOTSENDTOCHAN | Écrire dans un salon non rejoint | `PRIVMSG` |
+| `409` | ERR_NOORIGIN | `PING` sans argument | `PING` |
+| `411` | ERR_NORECIPIENT | `PRIVMSG` sans cible | `PRIVMSG` |
+| `412` | ERR_NOTEXTTOSEND | `PRIVMSG` sans texte | `PRIVMSG` |
+| `421` | ERR_UNKNOWNCOMMAND | Commande non gérée | dispatcher |
+| `461` | ERR_NEEDMOREPARAMS | Paramètres insuffisants | `PASS` `USER` `JOIN` `PART` `TOPIC` `KICK` `INVITE` `MODE` |
+
+### Erreurs — pseudo et enregistrement
 
 | Code | Nom | Quand |
 |---|---|---|
-| 401 | ERR_NOSUCHNICK | Pseudo/cible inconnu |
-| 403 | ERR_NOSUCHCHANNEL | Channel inexistant |
-| 433 | ERR_NICKNAMEINUSE | Pseudo déjà pris |
-| 451 | ERR_NOTREGISTERED | Pas encore enregistré |
-| 461 | ERR_NEEDMOREPARAMS | Pas assez d'arguments |
-| 462 | ERR_ALREADYREGISTERED | Déjà enregistré (re-PASS/USER) |
-| 464 | ERR_PASSWDMISMATCH | Mauvais mot de passe |
-| 471 | ERR_CHANNELISFULL | Channel plein (mode `l`) |
-| 473 | ERR_INVITEONLYCHAN | Channel en `+i`, pas invité |
-| 475 | ERR_BADCHANNELKEY | Mauvaise clé (`+k`) |
-| 482 | ERR_CHANOPRIVSNEEDED | Pas opérateur, action refusée |
+| `431` | ERR_NONICKNAMEGIVEN | `NICK` sans argument |
+| `432` | ERR_ERRONEUSNICKNAME | Caractères invalides, ou plus de 9 caractères |
+| `433` | ERR_NICKNAMEINUSE | Pseudo déjà pris, casse ignorée |
+| `451` | ERR_NOTREGISTERED | Commande envoyée avant d'être enregistré |
+| `462` | ERR_ALREADYREGISTRED | `PASS` ou `USER` après enregistrement |
+| `464` | ERR_PASSWDMISMATCH | Mot de passe faux — la connexion se ferme ensuite |
 
-> Tu n'as pas besoin de TOUS les implémenter parfaitement, mais les plus courants (433, 461, 464, 482, 473, 475) seront testés. Récupère les chaînes exactes dans la RFC 2812.
+### Erreurs — salons et droits
 
----
+| Code | Nom | Quand |
+|---|---|---|
+| `441` | ERR_USERNOTINCHANNEL | La cible n'est pas dans le salon (`KICK`, `MODE +o`) |
+| `442` | ERR_NOTONCHANNEL | **Toi** tu n'es pas dans le salon |
+| `443` | ERR_USERONCHANNEL | `INVITE` sur quelqu'un déjà membre |
+| `471` | ERR_CHANNELISFULL | `JOIN` refusé par `+l` |
+| `472` | ERR_UNKNOWNMODE | Flag de mode inconnu |
+| `473` | ERR_INVITEONLYCHAN | `JOIN` refusé par `+i` |
+| `475` | ERR_BADCHANNELKEY | `JOIN` refusé par `+k`, clé absente ou fausse |
+| `482` | ERR_CHANOPRIVSNEEDED | Action réservée aux opérateurs |
 
-## 9. Le piège #1 : les données partielles
+### Messages non numériques
 
-**TCP est un flux d'octets, pas un flux de messages.** C'est l'erreur qui plante 80% des implémentations naïves.
-
-Un seul `recv()` peut te rendre :
-- une demi-commande (`PRIVMSG #ch`)
-- une commande et demie (`NICK bob\r\nPRIVMSG #ch :sa`)
-- exactement une commande
-- trois commandes d'un coup
-
-**La règle :** chaque client a son **propre buffer de réception**. Tu y ajoutes ce que `recv()` rend, puis tu n'extrais et ne traites que les lignes **complètes** terminées par `\r\n`. Ce qui reste (commande incomplète) attend le prochain `recv()`.
-
-```cpp
-void Server::receiveFromClient(int fd)
-{
-    char buf[512];
-    ssize_t n = recv(fd, buf, sizeof(buf), 0);
-
-    if (n <= 0) { disconnectClient(fd); return; }   // 0 = déconnexion
-
-    Client& c = clients[fd];
-    c.inBuffer.append(buf, n);
-
-    size_t pos;
-    while ((pos = c.inBuffer.find("\r\n")) != std::string::npos)
-    {
-        std::string line = c.inBuffer.substr(0, pos);
-        c.inBuffer.erase(0, pos + 2);   // +2 pour retirer \r\n
-        executeCommand(c, line);        // ligne complète garantie
-    }
-    // ce qui reste dans inBuffer est une commande partielle → on attend
-}
-```
-
-> Pour tester ce comportement : envoie une commande caractère par caractère avec `nc` (en tapant lentement), ou coupe une commande en deux paquets. Si ton serveur traite ça correctement, tu es blindé.
+| Message | Quand |
+|---|---|
+| `PONG` | Réponse à `PING` |
+| `ERROR :Closing link (bad password)` | Après un `464` |
+| `ERROR :Closing link (Quit: ...)` | Après un `QUIT` |
+| `ERROR :Server shutting down` | À l'arrêt du serveur |
 
 ---
 
-## 10. Architecture en classes (proposition)
+## 9. Recettes
 
-Pas imposé, mais une structure propre rend l'oral facile et le code maintenable.
+### Session complète en nc
 
 ```
-Server
- ├── _serverFd            (socket d'écoute)
- ├── _password
- ├── _pollFds             (std::vector<pollfd>)
- ├── _clients             (std::map<int, Client>)   ← clé = fd
- ├── _channels            (std::map<std::string, Channel>)
- ├── run()                (la boucle poll)
- ├── acceptNewClient()
- ├── receiveFromClient(fd)
- └── executeCommand(...)
-
-Client
- ├── _fd
- ├── _nickname, _username, _hostname, _realname
- ├── _inBuffer, _outBuffer
- ├── _registered          (PASS+NICK+USER OK ?)
- ├── _passOk
- └── _channels            (channels rejoints)
-
-Channel
- ├── _name, _topic, _key
- ├── _members             (set ou map de Client*)
- ├── _operators
- ├── _invited
- ├── _userLimit
- └── _modes               (i, t, k, l actifs ?)
+nc 127.0.0.1 6667
+PASS pass
+NICK bob
+USER bob 0 * :Bob
+JOIN #dev
+PRIVMSG #dev :salut tout le monde
+PART #dev :j'y retourne
+QUIT :au revoir
 ```
 
-**Pour le dispatch des commandes**, une `std::map<std::string, void (Server::*)(Client&, params)>` (pointeurs sur méthodes) est élégante, mais un gros `if/else if` reste parfaitement valide en C++98 et plus simple à débugger.
+### Verrouiller un salon
 
----
-
-## 11. Plan d'attaque (ordre de dev recommandé)
-
-Ne code pas tout en bloc. Va incrémental, teste à chaque étape avec `nc` puis irssi.
-
-1. **Parsing des arguments** (`port`, `password`) + Makefile + structure de classes vides.
-2. **Socket + bind + listen + accept** : accepter une connexion, l'afficher dans les logs. Teste avec `nc localhost <port>`.
-3. **La boucle `poll()`** : gérer plusieurs connexions, lire les octets, les logger.
-4. **Buffering + parsing** des lignes `\r\n` → §9. C'est ta fondation, soigne-la.
-5. **Enregistrement** : `PASS`, `NICK`, `USER` + réponse `001`. À partir de là, irssi se connecte vraiment.
-6. **`PING`/`PONG`** : sinon irssi te coupe au bout de quelques secondes.
-7. **`JOIN`** + `PRIVMSG` vers un channel → le chat de base fonctionne.
-8. **`PRIVMSG`** vers un user (messages privés).
-9. **`PART`, `QUIT`, `NICK`** (changement), gestion propre des déconnexions.
-10. **Commandes opérateur** : `KICK`, `INVITE`, `TOPIC`, `MODE` avec les 5 modes.
-11. **Robustesse** : signaux (`SIGINT` propre), données partielles, edge cases, pas de leaks.
-
----
-
-## 12. Tests & éval
-
-### Tester sans client lourd
-```bash
-# Connexion brute
-nc -C localhost 6667        # -C force l'envoi de \r\n
-
-# Puis tape :
-PASS motdepasse
-NICK testuser
-USER test 0 * :Test User
-JOIN #test
-PRIVMSG #test :hello
+```
+JOIN #prive                    → tu es opérateur
+MODE #prive +i                 → invitation obligatoire
+MODE #prive +k secret          → clé posée
+MODE #prive +l 5               → 5 personnes maximum
+MODE #prive +t                 → sujet réservé aux opérateurs
+INVITE dave #prive             → dave peut entrer
 ```
 
-### Tester avec un vrai client (irssi)
-```bash
-irssi
-/connect localhost 6667 motdepasse
-/join #test
-/msg #test salut
+### Monter une équipe de modération
+
+```
+MODE #dev +o bob               → bob promu
+MODE #dev +o carol             → carol promue
+MODE #dev -o bob               → bob rétrogradé
+KICK #dev spammeur :spam       → exclusion
 ```
 
-### Ce que l'examinateur vérifiera
-- Compilation `-Wall -Wextra -Werror -std=c++98`, sans relink.
-- **Aucun fork**, tout est non-bloquant, **un seul poll**.
-- Plusieurs clients en simultané, messages routés vers les bons channels.
-- Authentification par mot de passe (bon ET mauvais).
-- Nickname/username, JOIN, PRIVMSG (channel + privé).
-- Op vs non-op : un non-op se fait refuser `KICK`/`MODE`/etc. (`482`).
-- Les 5 modes (`i`, `t`, `k`, `o`, `l`) testés un par un.
-- **Test des données partielles** : ils couperont une commande en plusieurs `recv()`. Ton serveur ne doit pas casser.
-- Pas de crash, pas de fd qui fuit, gestion propre du Ctrl-C.
+### Provoquer chaque erreur — utile en démo
+
+```
+PASS                           → 461
+BLAHBLAH                       → 421
+PRIVMSG                        → 411
+PRIVMSG bob                    → 412
+PRIVMSG fantome :x             → 401
+JOIN salon-sans-diese          → 403
+MODE #dev +z                   → 472
+KICK #dev absent               → 441
+```
+
+### Tester la robustesse
+
+| Test | Commande |
+|---|---|
+| Commande fragmentée | `printf 'PASS pa' ; sleep 1 ; printf 'ss\r\n'` |
+| Ligne de 512 octets | `python3 -c "import socket;s=socket.create_connection(('127.0.0.1',6667));s.sendall(b'NICK '+b'z'*505+b'\r\n')"` |
+| Client suspendu | `Ctrl-Z` dans irssi, inonder le salon, puis `fg` |
+| Coupure brutale | `kill -9 <pid du client>` |
+| Fuites | `valgrind --leak-check=full ./ircserv 6667 pass` |
 
 ---
 
-## 13. Pièges classiques (qui coûtent des points)
+## 10. Dépannage
 
-- **Oublier `PING`/`PONG`** → le client se déconnecte tout seul, ça donne l'impression que ton serveur bug.
-- **Lire/écrire hors du `poll()`** → 0 direct si repéré.
-- **Ne pas bufferiser** → casse au moindre message coupé.
-- **Ne pas gérer `recv() == 0`** (déconnexion brutale) → fd zombie, voire boucle infinie.
-- **Mauvais byte order** (`htons` oublié) → le serveur écoute sur le mauvais port.
-- **Modifier le tableau de `pollfds` pendant l'itération** sans précaution → comportement indéfini. Marque les fds à supprimer et nettoie après la boucle.
-- **Réponses numériques mal formatées** → certains clients ignorent les réponses non conformes. Respecte `:<serveur> <code> <nick> ...`.
-- **Pseudo non unique / case sensitivity** → IRC est insensible à la casse pour les pseudos et channels (`#Test` == `#test`). À gérer.
-- **Leaks** → chaque `Client`/`Channel` doit être proprement libéré à la déconnexion.
+| Symptôme | Cause | Solution |
+|---|---|---|
+| Le serveur ne démarre pas, `bind() error` | Port déjà occupé | Attendre, ou changer de port |
+| Tout renvoie `451` | `PASS` non envoyé, ou pas en premier | Recommencer par `PASS` |
+| `nc` ne répond pas | Enregistrement incomplet | Envoyer `PASS`, `NICK` **et** `USER` |
+| Message privé invisible dans irssi | Pas de fenêtre auto | `/set autocreate_query_level MSGS` |
+| `433` dès le second client | Même pseudo | Lancer irssi avec `-n <autre pseudo>` |
+| irssi se reconnecte en boucle | Mot de passe refusé | `/disconnect` |
+| `404` en écrivant dans un salon | Salon non rejoint | `JOIN` d'abord |
+| `482` sur `KICK` ou `MODE` | Tu n'es pas opérateur | Se faire promouvoir, ou créer son salon |
+| Le texte est tronqué après le premier mot | `:` manquant | `PRIVMSG #dev :mon texte` |
+| `/names` ou `/whois` → `421` | Non implémentées | Normal, hors sujet |
 
----
+### Limites connues
 
-## 14. Bonus (si le mandatory est nickel)
-
-À ne tenter **que** si la partie obligatoire est parfaite — sinon le bonus n'est même pas évalué.
-
-- **Transfert de fichiers** entre clients (DCC — Direct Client-to-Client).
-- **Un bot** : un client automatique que ton serveur héberge (réponses auto, commandes custom, etc.).
-
----
-
-## 15. Ressources
-
-- **RFC 1459** — https://datatracker.ietf.org/doc/html/rfc1459 (le protocole original)
-- **RFC 2812** — https://datatracker.ietf.org/doc/html/rfc2812 (réponses numériques précises)
-- **Modern IRC docs** — https://modern.ircdocs.horse/ (lecture beaucoup plus digeste que les RFC)
-- `man poll`, `man socket`, `man recv`, `man getaddrinfo`
-
----
-
-### TL;DR
-ft_irc = un serveur TCP mono-process qui multiplexe N clients avec **un seul `poll()`**, parse des lignes `\r\n` bufferisées par client, et implémente le sous-ensemble IRC : auth, nick/user, channels, PRIVMSG, et les commandes op (KICK/INVITE/TOPIC/MODE + 5 modes). Les trois fondations à blinder en premier : **la boucle poll**, **le buffering des données partielles**, et **PING/PONG**.
+| Limite | Détail |
+|---|---|
+| `JOIN #a,#b` | Listes non gérées, un salon à la fois |
+| Salons `&` | Seuls les `#` sont acceptés |
+| *realname* | Reçu dans `USER`, non conservé |
+| Modes utilisateur | `MODE <pseudo>` ignoré |
+| Bonus | Ni transfert de fichiers, ni bot |
