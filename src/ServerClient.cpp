@@ -25,6 +25,12 @@ void Server::acceptClient()
 	std::cout << "New connexion" << std::endl;
 }
 
+// Taille au-dela de laquelle une ligne sans fin est consideree hostile.
+// Le RFC plafonne un message a 512 octets ; sans cette borne, un client qui
+// enverrait un flux sans jamais de retour a la ligne ferait grossir le buffer
+// jusqu'a epuiser la memoire.
+#define MAX_LINE_LENGTH 8192
+
 void Server::handleClient(int fd)
 {
 	char recvBuffer[512];
@@ -48,14 +54,25 @@ void Server::handleClient(int fd)
 	// ajoute a la main : recvBuffer[512] serait hors du tampon
 	client->appendToBuffer(std::string(recvBuffer, bytesReceived));
 
-	while (client->getInBuffer().find("\r\n") != std::string::npos)
+	// On decoupe sur '\n' et non sur "\r\n" : le protocole impose CRLF, mais
+	// netcat sans -C n'envoie qu'un LF, et le sujet demande que nc fonctionne.
+	// Le '\r' eventuel est retire juste apres.
+	size_t pos;
+	while ((pos = client->getInBuffer().find('\n')) != std::string::npos)
 	{
-		size_t pos = client->getInBuffer().find("\r\n");
 		std::string line = client->getInBuffer().substr(0, pos);
-		client->eraseBuffer(0, pos + 2);
+		client->eraseBuffer(0, pos + 1);
+
+		if (!line.empty() && line[line.size() - 1] == '\r')
+			line.erase(line.size() - 1);
+
 		Message msg = Message::parse(line);
 		dispatcher(client, msg);
 	}
+
+	// ligne interminable : on coupe plutot que de laisser le buffer enfler
+	if (client->getInBuffer().size() > MAX_LINE_LENGTH)
+		markDisconnect(fd);
 }
 
 void Server::flushClient(int fd)
