@@ -171,7 +171,7 @@ commands/           one file per command family
 
 ### Use of AI
 
-AI (Claude) was used on this project, in the following way.
+An AI coding assistant was used on this project, in the following way.
 
 **What it was used for**
 
