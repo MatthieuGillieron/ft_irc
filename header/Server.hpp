@@ -22,7 +22,7 @@
 # include <arpa/inet.h>  // inet_addr, inet_ntoa, inet_ntop
 # include <netdb.h>      // getaddrinfo, freeaddrinfo, gethostbyname
 
-extern sig_atomic_t g_shutdown;
+extern volatile sig_atomic_t g_shutdown;
 
 // nom du serveur, utilise comme prefixe de toutes les reponses
 #define SERVER_NAME "ircserv"
