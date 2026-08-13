@@ -1,7 +1,4 @@
-# ft_irc — Cheatsheets
-
-Aide-mémoire du serveur. Tout ce qui est listé ici est réellement implémenté et
-testé : rien de générique, rien d'aspirationnel.
+# Cheatsheets
 
 - [1. Démarrage](#1-démarrage)
 - [2. Enregistrement](#2-enregistrement)
