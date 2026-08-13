@@ -10,7 +10,7 @@ void Server::acceptClient()
 	int clientFd = accept(_listenFd, (struct sockaddr*)&aclient, &clientLen);
 	if(clientFd == -1)
 	{
-		std::cerr << "accept() error:" << strerror(errno) << std::endl;
+		std::cerr << C_ERR << "[!] accept() error: " << strerror(errno) << RESET << std::endl;
 		return;
 	}
 	fcntl(clientFd, F_SETFL, O_NONBLOCK);
@@ -22,7 +22,8 @@ void Server::acceptClient()
 
 	_pollfds.push_back(acceptcl);
 	_clients.push_back(new Client(clientFd));
-	std::cout << "[+] New connexion (fd " << clientFd << ")" << std::endl;
+	std::cout << C_UP << "[+] New connexion " << RESET
+			  << C_DETAIL << "(fd " << clientFd << ")" << RESET << std::endl;
 }
 
 // Taille au-dela de laquelle une ligne sans fin est consideree hostile.
@@ -121,10 +122,11 @@ void Server::disconnectClient(int fd)
 	{
 		// trace symetrique de celle d'acceptClient : toutes les voies de
 		// deconnexion passent ici, pas seulement un recv() a zero
-		std::cout << "[-] Client disconnected (fd " << fd;
+		std::cout << C_DOWN << "[-] Client disconnected " << RESET
+				  << C_DETAIL << "(fd " << fd;
 		if (!client->getNickName().empty())
 			std::cout << ", " << client->getNickName();
-		std::cout << ")" << std::endl;
+		std::cout << ")" << RESET << std::endl;
 
 		// une deconnexion brutale doit prevenir les salons, comme un QUIT
 		if (!client->getNickName().empty() && client->getRegistred())

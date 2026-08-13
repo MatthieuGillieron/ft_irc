@@ -4,6 +4,7 @@
 #include "Client.hpp"
 #include "Message.hpp"
 #include "Channel.hpp"
+#include "Colors.hpp"
 
 # include <iostream>   // std::cout, std::cerr
 # include <string>

@@ -42,7 +42,7 @@ bool Server::run()
 		if (g_shutdown && !closing)
 		{
 			closing = true;
-			std::cout << "Server shutting down..." << std::endl;
+			std::cout << C_INFO << "[*] Server shutting down..." << RESET << std::endl;
 			for (size_t i = 0; i < _clients.size(); i++)
 				reply(*_clients[i], "ERROR :Server shutting down");
 		}
@@ -86,7 +86,7 @@ bool Server::run()
 		{
 			if (errno == EINTR)
 				continue;
-			std::cerr << "poll() error: " << strerror(errno) << std::endl;
+			std::cerr << C_ERR << "[!] poll() error: " << strerror(errno) << RESET << std::endl;
 			break;
 		}
 
@@ -140,7 +140,7 @@ bool Server::setupSocket()
 
 	if(_listenFd == -1)
 	{
-		std::cerr << "socket() error: " << strerror(errno) << std::endl;
+		std::cerr << C_ERR << "[!] socket() error: " << strerror(errno) << RESET << std::endl;
 		return false;
 	}
 
@@ -153,14 +153,14 @@ bool Server::setupSocket()
 	setsockopt(_listenFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 	if(bind(_listenFd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1 )
 	{
-		std::cerr << "bind() error: " << strerror(errno) << std::endl;
+		std::cerr << C_ERR << "[!] bind() error: " << strerror(errno) << RESET << std::endl;
 		close(_listenFd);
 		_listenFd = -1;
 		return false;
 	}
 	if(listen(_listenFd, 5) == -1)
 	{
-		std::cerr << "listen() error: " << strerror(errno) << std::endl;
+		std::cerr << C_ERR << "[!] listen() error: " << strerror(errno) << RESET << std::endl;
 		close(_listenFd);
 		_listenFd = -1;
 		return false;

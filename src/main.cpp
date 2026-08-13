@@ -15,7 +15,7 @@ int main(int ac, char **av)
 
 	if (ac != 3)
 	{
-		std::cout << "Usage: ./irc <port> <password>" << std::endl;
+		std::cout << C_ERR << "Usage: ./ircserv <port> <password>" << RESET << std::endl;
 		return 1;
 	}
 
@@ -23,7 +23,7 @@ int main(int ac, char **av)
 	unsigned int port = std::atoi(av[1]);
 	if (port < 1024 || port > 65535)
 	{
-		std::cout << "Error of range port : 1024 - 65535 " << std::endl;
+		std::cout << C_ERR << "Error: port must be between 1024 and 65535" << RESET << std::endl;
 		return 1;
 	}
 
@@ -31,11 +31,12 @@ int main(int ac, char **av)
 	std::string password(av[2]);
 	if (password.empty())
 	{
-		std::cout << "Error: password cannot be empty" << std::endl;
+		std::cout << C_ERR << "Error: password cannot be empty" << RESET << std::endl;
 		return 1;
 	}
 
-	std::cout << " Running ..." << std::endl;
+	std::cout << C_INFO << BOLD << "[*] ircserv listening on port " << port
+			  << RESET << std::endl;
 
 	signal(SIGINT, signalHandler);
 	signal(SIGPIPE, SIG_IGN);
@@ -51,7 +52,7 @@ int main(int ac, char **av)
 	}
 	catch (const std::exception &e)
 	{
-		std::cerr << "Fatal: " << e.what() << std::endl;
+		std::cerr << C_ERR << "[!] Fatal: " << e.what() << RESET << std::endl;
 		return 1;
 	}
 
