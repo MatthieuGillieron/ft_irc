@@ -28,36 +28,33 @@ void Server::acceptClient()
 void Server::handleClient(int fd)
 {
 	char recvBuffer[512];
-	int bytesReceived = recv(fd, recvBuffer,sizeof(recvBuffer), 0);
-	if(bytesReceived < 0)
+	int bytesReceived = recv(fd, recvBuffer, sizeof(recvBuffer), 0);
+
+	// poll() vient de signaler ce descripteur pret : un retour <= 0 est soit une
+	// fin de flux, soit une erreur reelle. Le sujet interdit de consulter errno
+	// apres un recv pour decider de la suite, donc les deux cas sont traites
+	// de la meme facon : le client s'en va.
+	if (bytesReceived <= 0)
 	{
-		if(errno == EAGAIN)
-			return;
-		std::cerr << "recv() error:" << strerror(errno) << std::endl;
 		markDisconnect(fd);
 		return;
 	}
-	else if(bytesReceived == 0)
+
+	Client* client = findClient(fd);
+	if (client == NULL)
+		return;
+
+	// on construit la chaine a partir de la longueur lue, jamais d'un '\0'
+	// ajoute a la main : recvBuffer[512] serait hors du tampon
+	client->appendToBuffer(std::string(recvBuffer, bytesReceived));
+
+	while (client->getInBuffer().find("\r\n") != std::string::npos)
 	{
-		markDisconnect(fd);
-		std::cout << "Client disconnected" << std::endl;
-	}
-	else if(bytesReceived > 0)
-	{
-		Client* client = findClient(fd);
-		if (client == NULL)
-			return;
-		// on construit la chaine a partir de la longueur lue, jamais d'un '\0'
-		// ajoute a la main : recvBuffer[512] serait hors du tampon
-		client->appendToBuffer(std::string(recvBuffer, bytesReceived));
-		while(client->getInBuffer().find("\r\n") != std::string::npos)
-		{
-			size_t pos = client->getInBuffer().find("\r\n");
-			std::string line = client->getInBuffer().substr(0, pos);
-			client->eraseBuffer(0, pos + 2);
-			Message msg = Message::parse(line);
-			dispatcher(client, msg);
-		}
+		size_t pos = client->getInBuffer().find("\r\n");
+		std::string line = client->getInBuffer().substr(0, pos);
+		client->eraseBuffer(0, pos + 2);
+		Message msg = Message::parse(line);
+		dispatcher(client, msg);
 	}
 }
 
@@ -71,20 +68,16 @@ void Server::flushClient(int fd)
 		return;
 
 	int bytesSent = send(fd, out.c_str(), out.size(), 0);
-	if(bytesSent < 0)
-	{
-		// le noyau ne peut pas ecrire maintenant : on reessaiera au prochain tour
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
-			return;
-		// tout autre echec signifie que le client n'est plus joignable
-		std::cerr << "send() error: " << strerror(errno) << std::endl;
-		markDisconnect(fd);
+
+	// Le sujet interdit de consulter errno apres un send. On ne peut donc pas
+	// distinguer "tampon noyau plein" d'une erreur reelle : on ne touche pas au
+	// buffer, l'envoi sera retente au prochain POLLOUT. Un client reellement
+	// mort est ramasse par POLLHUP / POLLERR en tete de boucle.
+	if (bytesSent <= 0)
 		return;
-	}
-	if(bytesSent > 0)
-	{
-		client->eraseOutBuffer(0, bytesSent);
-	}
+
+	// on n'efface QUE ce qui est reellement parti : send peut etre partiel
+	client->eraseOutBuffer(0, bytesSent);
 }
 
 // un meme fd peut etre signale deux fois dans le meme tour (POLLHUP + recv a 0) :
