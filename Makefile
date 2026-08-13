@@ -3,11 +3,13 @@ NAME = ircserv
 CC = c++
 CFLAGS = -Wall -Wextra -Werror -std=c++98
 
-SRCS =	src/main.cpp \
-		src/Server.cpp \
-		src/Channel.cpp \
-		src/Client.cpp \
-		src/Message.cpp
+
+SRCS =	src/main.cpp src/Server.cpp src/Channel.cpp src/Message.cpp					\
+		src/ServerClient.cpp src/ServerDispatch.cpp 								\
+		src/commands/Reply.cpp														\
+		src/commands/Registration.cpp src/commands/Ping.cpp src/commands/Join.cpp	\
+		src/commands/Privmsg.cpp src/commands/PartQuit.cpp							\
+		src/commands/Topic.cpp src/commands/Kick.cpp src/commands/Mode.cpp
 
 
 

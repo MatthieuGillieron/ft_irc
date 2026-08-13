@@ -1,10 +1,14 @@
-
 #include "../header/Server.hpp"
 
-#include <iostream>
-#include <cstdlib>
+// volatile : le handler peut la modifier a tout instant, le compilateur
+// ne doit pas garder une copie en registre dans la boucle principale
+volatile sig_atomic_t g_shutdown = 0;
 
-
+void signalHandler(int signal)
+{
+	(void)signal;
+	g_shutdown = 1;
+}
 
 int main(int ac, char **av)
 {
@@ -25,14 +29,31 @@ int main(int ac, char **av)
 
 
 	std::string password(av[2]);
-	//check si mdp ok etcc ..
-
-
+	if (password.empty())
+	{
+		std::cout << "Error: password cannot be empty" << std::endl;
+		return 1;
+	}
 
 	std::cout << " Running ..." << std::endl;
 
-	Server server(port, password);
-	server.run();
+	signal(SIGINT, signalHandler);
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGQUIT, signalHandler);
+
+	// le sujet exige que le programme ne quitte jamais de facon inattendue,
+	// meme a court de memoire : un new qui echoue ne doit pas terminer brutalement
+	try
+	{
+		Server server(port, password);
+		if (!server.run())
+			return 1;
+	}
+	catch (const std::exception &e)
+	{
+		std::cerr << "Fatal: " << e.what() << std::endl;
+		return 1;
+	}
 
 	return 0;
 }
