@@ -7,7 +7,7 @@ void Server::acceptClient()
 	sockaddr_in aclient;
 	socklen_t clientLen = sizeof(aclient);
 
-	int clientFd = (accept(_listenFd, (struct sockaddr*)&aclient, &clientLen));
+	int clientFd = accept(_listenFd, (struct sockaddr*)&aclient, &clientLen);
 	if(clientFd == -1)
 	{
 		std::cerr << "accept() error:" << strerror(errno) << std::endl;
@@ -22,7 +22,7 @@ void Server::acceptClient()
 
 	_pollfds.push_back(acceptcl);
 	_clients.push_back(new Client(clientFd));
-	std::cout << "New connexion" << std::endl;
+	std::cout << "[+] New connexion (fd " << clientFd << ")" << std::endl;
 }
 
 // Taille au-dela de laquelle une ligne sans fin est consideree hostile.
@@ -119,6 +119,13 @@ void Server::disconnectClient(int fd)
 	// et le prochain broadcast ecrit dedans
 	if (client != NULL)
 	{
+		// trace symetrique de celle d'acceptClient : toutes les voies de
+		// deconnexion passent ici, pas seulement un recv() a zero
+		std::cout << "[-] Client disconnected (fd " << fd;
+		if (!client->getNickName().empty())
+			std::cout << ", " << client->getNickName();
+		std::cout << ")" << std::endl;
+
 		// une deconnexion brutale doit prevenir les salons, comme un QUIT
 		if (!client->getNickName().empty() && client->getRegistred())
 			broadcastToPeers(*client, ":" + buildPrefix(*client) + " QUIT :Connection reset by peer", false);
