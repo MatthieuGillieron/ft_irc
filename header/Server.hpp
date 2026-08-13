@@ -94,8 +94,6 @@ class Server
 	void dispatcher(Client* client, Message msg);
 
 	void flushClient(int fd);
-	// dernier envoi avant l'arret, toujours a travers poll()
-	void flushAll();
 	Client* findClient(int fd);
 	Client* findClientByNick(const std::string& nick);
 	Channel* findChannel(const std::string& name);

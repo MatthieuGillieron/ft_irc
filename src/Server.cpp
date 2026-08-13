@@ -1,8 +1,8 @@
 
 #include "../header/Server.hpp"
 
-// Le message d'adieu est envoye par flushAll() avant d'arriver ici :
-// le destructeur ne fait plus aucune I/O, tout passe par poll().
+// Le message d'adieu est envoye par la phase d'arret de run() avant d'arriver
+// ici : le destructeur ne fait plus aucune I/O, tout passe par poll().
 Server::~Server()
 {
 	for(size_t i = 0; i < _clients.size(); i++)
@@ -17,41 +17,10 @@ Server::~Server()
 }
 
 
-// Vide les buffers de sortie restants, en passant par poll() comme le reste.
-// Borne a 10 tours de 100 ms : un client qui ne lit plus ne doit pas
-// empecher le serveur de s'arreter.
-void Server::flushAll()
-{
-	for (int round = 0; round < 10; round++)
-	{
-		std::vector<struct pollfd> pending;
-
-		for (size_t i = 0; i < _clients.size(); i++)
-		{
-			if (_clients[i]->getOutBuffer().empty())
-				continue;
-
-			struct pollfd p;
-			p.fd = _clients[i]->getFd();
-			p.events = POLLOUT;
-			p.revents = 0;
-			pending.push_back(p);
-		}
-		if (pending.empty())
-			return;
-
-		if (poll(&pending[0], pending.size(), 100) <= 0)
-			return;
-
-		for (size_t i = 0; i < pending.size(); i++)
-		{
-			if (pending[i].revents & POLLOUT)
-				flushClient(pending[i].fd);
-		}
-	}
-}
-
-
+// Un SEUL poll() dans tout le projet, celui de cette boucle.
+// L'extinction n'a donc pas sa propre boucle d'attente : elle bascule la meme
+// dans un mode "closing" ou l'on ne fait plus qu'ecrire, jusqu'a ce que les
+// buffers de sortie soient vides.
 bool Server::run()
 {
 	if (!setupSocket())
@@ -64,51 +33,91 @@ bool Server::run()
 
 	_pollfds.push_back(pfd);
 
-    while(!g_shutdown)
-    {
-		for(size_t y = 0; y < _pollfds.size(); y++)
+	bool closing = false;
+	int closingRounds = 0;
+
+	while (true)
+	{
+		// premier tour apres le signal : on empile le message d'adieu
+		if (g_shutdown && !closing)
 		{
-			if(_pollfds[y].fd == _listenFd)
+			closing = true;
+			std::cout << "Server shutting down..." << std::endl;
+			for (size_t i = 0; i < _clients.size(); i++)
+				reply(*_clients[i], "ERROR :Server shutting down");
+		}
+
+		bool pending = false;
+		for (size_t y = 0; y < _pollfds.size(); y++)
+		{
+			if (_pollfds[y].fd == _listenFd)
+			{
+				// en phase d'arret on n'accepte plus personne
+				_pollfds[y].events = closing ? 0 : POLLIN;
 				continue;
+			}
+
 			Client* client = findClient(_pollfds[y].fd);
 			if (client == NULL)
+			{
+				_pollfds[y].events = 0;
 				continue;
-			if(client->getOutBuffer().empty())
-				_pollfds[y].events = POLLIN;
+			}
+
+			bool hasOut = !client->getOutBuffer().empty();
+			if (hasOut)
+				pending = true;
+
+			// on ne demande POLLOUT que si on a quelque chose a ecrire :
+			// sinon poll reviendrait immediatement a chaque tour
+			if (closing)
+				_pollfds[y].events = hasOut ? POLLOUT : 0;
 			else
-			_pollfds[y].events = POLLIN | POLLOUT;
+				_pollfds[y].events = hasOut ? (POLLIN | POLLOUT) : POLLIN;
 		}
-		int ret = poll(&_pollfds[0], _pollfds.size(), -1);
+
+		// plus rien a envoyer, ou un client qui ne lit plus : on sort.
+		// La borne evite qu'un client bloque l'arret du serveur.
+		if (closing && (!pending || ++closingRounds > 10))
+			break;
+
+		int ret = poll(&_pollfds[0], _pollfds.size(), closing ? 100 : -1);
 		if (ret < 0)
 		{
-    		if (errno == EINTR) continue;
-    			std::cerr << "poll() error: " << strerror(errno) << std::endl;
-    		break;
+			if (errno == EINTR)
+				continue;
+			std::cerr << "poll() error: " << strerror(errno) << std::endl;
+			break;
 		}
+
 		for (size_t i = 0; i < _pollfds.size(); i++)
 		{
 			if (_pollfds[i].revents & (POLLHUP | POLLERR | POLLNVAL))
 			{
-    			if (_pollfds[i].fd != _listenFd)
-        			markDisconnect(_pollfds[i].fd);
-    			continue;
+				if (_pollfds[i].fd != _listenFd)
+					markDisconnect(_pollfds[i].fd);
+				continue;
 			}
+
+			if (closing)
+			{
+				// pendant l'extinction on n'ecoute plus, on ne fait que vider
+				if (_pollfds[i].revents & POLLOUT)
+					flushClient(_pollfds[i].fd);
+				continue;
+			}
+
 			if (_pollfds[i].revents & POLLIN)
 			{
-				if(_pollfds[i].fd == _listenFd)
-				{
+				if (_pollfds[i].fd == _listenFd)
 					acceptClient();
-				}
 				else
-				{
 					handleClient(_pollfds[i].fd);
-				}
 			}
 			if (_pollfds[i].revents & POLLOUT)
-			{
-    		flushClient(_pollfds[i].fd);
-			}
+				flushClient(_pollfds[i].fd);
 		}
+
 		// un client marque "quitting" part une fois sa derniere reponse envoyee
 		for (size_t c = 0; c < _clients.size(); c++)
 		{
@@ -117,14 +126,10 @@ bool Server::run()
 		}
 
 		for (size_t k = 0; k < _toDisconnect.size(); k++)
-    		disconnectClient(_toDisconnect[k]);
+			disconnectClient(_toDisconnect[k]);
 		_toDisconnect.clear();
-    }
+	}
 
-	std::cout << "Server shutting down..." << std::endl;
-	for (size_t i = 0; i < _clients.size(); i++)
-		reply(*_clients[i], "ERROR :Server shutting down");
-	flushAll();
 	return true;
 }
 
