@@ -1,16 +1,13 @@
-
 #ifndef CLIENT_HPP
 #define CLIENT_HPP
 
 #include <string>
-
 
 class Client
 {
     public:
         Client(int fd, bool pass = false, bool registred = false) : _fd(fd), _pass(pass), _registred(registred), _quitting(false) {};
 		~Client() {};
-
 
         int getFd() const { return _fd; }
 		bool getPass() const { return _pass; }
@@ -27,11 +24,9 @@ class Client
 		void setQuitting(bool quitting) { _quitting = quitting; }
 		void setNickName(std::string nickName) { _nickName = nickName; }
 		void setUserName(std::string userName) { _userName = userName; }
-
         void setInBuffer(std::string inBuffer) { _inBuffer = inBuffer; }
         void appendToBuffer(std::string data) { _inBuffer += data; }
         void eraseBuffer(size_t pos, size_t len) { _inBuffer.erase(pos, len); }
-		
 		void setOutBuffer(std::string outBuffer) { _outBuffer = outBuffer; }
 		void appendToOutBuffer(std::string data) { _outBuffer += data; }
 		void eraseOutBuffer(size_t pos, size_t len) { _outBuffer.erase(pos, len); }
@@ -46,6 +41,5 @@ class Client
 		std::string _outBuffer;
 		bool _quitting;
 };
-
 
 #endif

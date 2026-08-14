@@ -10,6 +10,7 @@
 # include <string>
 # include <vector>
 # include <map>
+#include <cctype>
 # include <cstring>    // memset, strerror
 # include <cstdlib>    // atoi, exit
 # include <csignal>    // signal, sigaction, sigemptyset...
@@ -27,10 +28,8 @@ extern volatile sig_atomic_t g_shutdown;
 
 // prefixe d'un message emis au nom d'un client : "nick!user@localhost"
 std::string buildPrefix(const Client &client);
-
 // comparaison de pseudos / de noms de salon : IRC est insensible a la casse
 bool ircEqual(const std::string &a, const std::string &b);
-
 // "#a,#b,#c" -> ["#a", "#b", "#c"] : listes de cibles de JOIN, PART et PRIVMSG
 std::vector<std::string> splitList(const std::string &line, char sep);
 
@@ -41,10 +40,8 @@ class Server
     ~Server();
 
     bool run(); // poll ; false si le serveur n'a pas pu demarrer
-
 	bool setupSocket(); // socket ecoute
 	void acceptClient();
-
 	void handleClient(int fd);
 	void handlePass(Client& client, const Message& msg);
 	void handleNick(Client &client, const Message &msg);
@@ -53,41 +50,31 @@ class Server
 	void handleJoin(Client& client, const Message& msg);
 	bool checkJoin(Client& client, Channel* chan, const std::string& key);
 	void joinReplies(Client& client, Channel* chan);
-
 	void handlePrivmsg(Client& client, const Message& msg);
 	void handleNotice(Client& client, const Message& msg);
 	// coeur commun de PRIVMSG et NOTICE : NOTICE n'emet jamais d'erreur
 	void sendMessage(Client& client, const Message& msg, const std::string& cmd, bool silent);
-
 	void handlePart(Client& client, const Message& msg);
 	void handleQuit(Client& client, const Message& msg);
-
 	// envoie a tous ceux qui partagent un salon avec ce client, une seule fois chacun
 	void broadcastToPeers(Client& client, const std::string& msg, bool includeSelf);
 	// retire le client d'un salon et detruit celui-ci s'il devient vide
 	void leaveChannel(Client& client, Channel* chan);
-
 	void handleTopic(Client& client, const Message& msg);
 	void handleKick(Client& client, const Message& msg);
 	void handleInvite(Client& client, const Message& msg);
-
 	void handleMode(Client& client, const Message& msg);
 	void applyModes(Client& client, Channel* chan, const Message& msg);
 	// applique un seul flag ; renvoie false si le changement n'a pas eu lieu
 	bool applyOneMode(Client& client, Channel* chan, char mode, bool adding, std::string& arg);
-
 	void disconnectClient(int fd);
 	void markDisconnect(int fd); // met un fd en file de deconnexion, sans doublon
-
 	// ligne brute, le CRLF est ajoute
 	void reply(Client &client, const std::string &msg);
 	// ":ircserv <code> <nick> <params> :<trailing>"
 	void sendNumeric(Client &client, int code, const std::string &params, const std::string &trailing);
 	void sendNumeric(Client &client, int code, const std::string &trailing);
-
 	void checkRegister(Client &client);
-
-
 	void dispatcher(Client* client, Message msg);
 
 	void flushClient(int fd);
@@ -106,6 +93,5 @@ class Server
 		std::vector<int> _toDisconnect;
 
 };
-
 
 #endif

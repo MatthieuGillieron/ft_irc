@@ -1,6 +1,4 @@
-
 #include "../../header/Server.hpp"
-
 
 // Un salon vide ne doit pas survivre : il garderait ses modes, sa cle et sa
 // liste d'invites pour le prochain qui le recree. removeMember retire aussi le
@@ -16,7 +14,6 @@ void Server::leaveChannel(Client &client, Channel *chan)
 		delete chan;
 	}
 }
-
 
 // Envoie a tous ceux qui partagent au moins un salon avec ce client. Le
 // dedoublonnage est indispensable : sans lui, quelqu'un present dans trois
@@ -52,7 +49,6 @@ void Server::broadcastToPeers(Client &client, const std::string &msg, bool inclu
 			reply(*members[k], msg);
 		}
 	}
-
 	if (includeSelf)
 	{
 		for (size_t d = 0; d < done.size(); d++)
@@ -63,7 +59,6 @@ void Server::broadcastToPeers(Client &client, const std::string &msg, bool inclu
 		reply(client, msg);
 	}
 }
-
 
 // PART <salon>{,<salon>} [:<raison>]
 // La diffusion precede le retrait du membre : sinon l'emetteur ne voit pas son
@@ -97,7 +92,6 @@ void Server::handlePart(Client &client, const Message &msg)
 		leaveChannel(client, chan);
 	}
 }
-
 
 // QUIT [:<raison>]
 // L'emetteur recoit ERROR, pas son propre QUIT, puis part une fois son buffer

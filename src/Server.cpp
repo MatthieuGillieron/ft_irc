@@ -1,4 +1,3 @@
-
 #include "../header/Server.hpp"
 
 // Le message d'adieu est envoye par la phase d'arret de run() : le destructeur
@@ -15,7 +14,6 @@ Server::~Server()
 	if (_listenFd != -1)
 		close(_listenFd);
 }
-
 
 // Un SEUL poll() dans tout le projet, celui de cette boucle. L'extinction n'a
 // donc pas sa propre boucle d'attente : elle bascule celle-ci dans un mode
@@ -49,7 +47,6 @@ bool Server::run()
 			for (size_t i = 0; i < _clients.size(); i++)
 				reply(*_clients[i], "ERROR :Server shutting down");
 		}
-
 		bool pending = false;
 		for (size_t y = 0; y < _pollfds.size(); y++)
 		{
@@ -58,14 +55,12 @@ bool Server::run()
 				_pollfds[y].events = closing ? 0 : POLLIN;
 				continue;
 			}
-
 			Client* client = findClient(_pollfds[y].fd);
 			if (client == NULL)
 			{
 				_pollfds[y].events = 0;
 				continue;
 			}
-
 			bool hasOut = !client->getOutBuffer().empty();
 			if (hasOut)
 				pending = true;
@@ -87,7 +82,6 @@ bool Server::run()
 			std::cerr << C_ERR << "[!] poll() error: " << strerror(errno) << RESET << std::endl;
 			break;
 		}
-
 		for (size_t i = 0; i < _pollfds.size(); i++)
 		{
 			if (_pollfds[i].revents & (POLLHUP | POLLERR | POLLNVAL))
@@ -114,7 +108,6 @@ bool Server::run()
 			if (_pollfds[i].revents & POLLOUT)
 				flushClient(_pollfds[i].fd);
 		}
-
 		for (size_t c = 0; c < _clients.size(); c++)
 		{
 			if (_clients[c]->isQuitting() && _clients[c]->getOutBuffer().empty())
@@ -125,10 +118,8 @@ bool Server::run()
 			disconnectClient(_toDisconnect[k]);
 		_toDisconnect.clear();
 	}
-
 	return true;
 }
-
 
 // Un echec doit arreter le serveur : sans ca run() enchainerait sur poll() avec
 // un descripteur invalide. Le cas se produit des qu'on relance sur un port
@@ -141,15 +132,12 @@ bool Server::setupSocket()
 		std::cerr << C_ERR << "[!] socket() error: " << strerror(errno) << RESET << std::endl;
 		return false;
 	}
-
 	sockaddr_in serverAddress;
 	serverAddress.sin_family = AF_INET;
 	serverAddress.sin_port = htons(_port);
 	serverAddress.sin_addr.s_addr = INADDR_ANY;
-
 	int opt = 1;
 	setsockopt(_listenFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
 	if (bind(_listenFd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1)
 	{
 		std::cerr << C_ERR << "[!] bind() error: " << strerror(errno) << RESET << std::endl;
@@ -164,7 +152,6 @@ bool Server::setupSocket()
 		_listenFd = -1;
 		return false;
 	}
-
 	fcntl(_listenFd, F_SETFL, O_NONBLOCK);
 	return true;
 }

@@ -1,7 +1,4 @@
-
-
 #include "../../header/Server.hpp"
-
 
 void Server::handlePing(Client& client, const Message& msg)
 {

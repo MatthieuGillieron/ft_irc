@@ -1,7 +1,4 @@
-
 #include "../../header/Server.hpp"
-#include <cctype>
-
 
 // Les trois informations reunies font basculer le client dans l'etat enregistre
 // et declenchent les reponses 001 a 004. La 004 n'a pas de trailing :
@@ -22,11 +19,9 @@ void Server::checkRegister(Client &client)
 	sendNumeric(client, 4, SERVER_NAME " 1.0 o itkol", "");
 }
 
-
 bool specialChar(char c)
 {
-
-std::string allowed = "[]\\_^{}|`";
+	std::string allowed = "[]\\_^{}|`";
 
 	for (size_t i = 0; i < allowed.length(); i++)
 	{
@@ -39,13 +34,10 @@ std::string allowed = "[]\\_^{}|`";
 
 bool isValidNick(const std::string &nickName)
 {
-
 	if (nickName.empty() || nickName.length() > 9)
 		return false;
 
-
 	char first = nickName[0];
-
 
 	if (!isalpha(first) && !specialChar(first))
 		return false;
@@ -57,9 +49,7 @@ bool isValidNick(const std::string &nickName)
 			return false;
 	}
 	return true;
-
 }
-
 
 // Un mot de passe faux recoit sa reponse, puis la connexion se ferme une fois
 // le buffer de sortie parti.
@@ -76,7 +66,6 @@ void Server::handlePass(Client& client, const Message& msg)
 		sendNumeric(client, 461, "PASS", "Not enough parameters");
 		return;
 	}
-
 	if (msg.param[0] != _password)
 	{
 		sendNumeric(client, 464, "Password incorrect");
@@ -84,11 +73,9 @@ void Server::handlePass(Client& client, const Message& msg)
 		client.setQuitting(true);
 		return;
 	}
-
 	client.setPass(true);
 	checkRegister(client);
 }
-
 
 // PASS doit avoir ete fourni en premier. L'unicite est insensible a la casse.
 // Un changement en cours de session est diffuse a tous les salons du client, le
@@ -101,7 +88,6 @@ void Server::handleNick(Client &client, const Message &msg)
 		sendNumeric(client, 451, "You have not registered");
 		return;
 	}
-
 	if (msg.param.empty())
 	{
 		sendNumeric(client, 431, "No nickname given");
@@ -115,18 +101,15 @@ void Server::handleNick(Client &client, const Message &msg)
 		sendNumeric(client, 432, nickName, "Erroneous nickname");
 		return;
 	}
-
 	Client *other = findClientByNick(nickName);
 	if (other != NULL && other != &client)
 	{
 		sendNumeric(client, 433, nickName, "Nickname is already in use");
 		return;
 	}
-
 	std::string oldNick = client.getNickName();
 	if (oldNick == nickName)
 		return;
-
 	if (client.getRegistred())
 	{
 		std::string line = ":" + buildPrefix(client) + " NICK :" + nickName;
@@ -140,17 +123,13 @@ void Server::handleNick(Client &client, const Message &msg)
 				chans[i]->addInvite(nickName);
 			}
 		}
-
 		client.setNickName(nickName);
 		broadcastToPeers(client, line, true);
 		return;
 	}
-
 	client.setNickName(nickName);
-
 	checkRegister(client);
 }
-
 
 void Server::handleUser(Client& client, const Message& msg)
 {
@@ -159,22 +138,16 @@ void Server::handleUser(Client& client, const Message& msg)
 		sendNumeric(client, 451, "You have not registered");
 		return;
 	}
-
 	if (client.getRegistred())
 	{
 		sendNumeric(client, 462, "You may not reregister");
 		return;
 	}
-
 	if (msg.param.size() < 4)
 	{
 		sendNumeric(client, 461, "USER", "Not enough parameters");
 		return;
 	}
-
 	client.setUserName(msg.param[0]);
-
 	checkRegister(client);
 }
-
-

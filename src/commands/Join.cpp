@@ -1,6 +1,4 @@
-
 #include "../../header/Server.hpp"
-
 
 bool Server::checkJoin(Client &client, Channel *chan, const std::string &key)
 {
@@ -25,7 +23,6 @@ bool Server::checkJoin(Client &client, Channel *chan, const std::string &key)
 	return true;
 }
 
-
 void Server::joinReplies(Client &client, Channel *chan)
 {
 	std::string nick = client.getNickName();
@@ -37,7 +34,6 @@ void Server::joinReplies(Client &client, Channel *chan)
 	sendNumeric(client, 353, "= " + chanName, chan->getNamesList());
 	sendNumeric(client, 366, chanName, "End of /NAMES list");
 }
-
 
 void Server::handleJoin(Client &client, const Message &msg)
 {

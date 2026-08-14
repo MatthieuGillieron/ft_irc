@@ -1,4 +1,3 @@
-
 #ifndef CHANNEL_HPP
 #define CHANNEL_HPP
 
@@ -24,36 +23,26 @@ class Channel
 
 
 		void setTopic(const std::string &topic) { _topic = topic; }
-
 		void setInviteOnly(bool value) { _inviteOnly = value; }
 		void setTopicRestricted(bool value) { _topicRestricted = value; }
 		void setKey(const std::string &key) { _key = key; _hasKey = true; }
 		void removeKey() { _key.clear(); _hasKey = false; }
 		void setLimit(size_t limit) { _limit = limit; _hasLimit = true; }
 		void removeLimit() { _limit = 0; _hasLimit = false; }
-
-
 		void addMember(Client *client);
 		void removeMember(Client *client);
 		bool isMember(Client *client) const;
 		size_t getMemberCount() const { return _members.size(); }
 		const std::vector<Client*> &getMembers() const { return _members; }
 		bool isEmpty() const { return _members.empty(); }
-
-
 		void addModo(Client *client);
 		void removeModo(Client *client);
 		bool isModo(Client *client) const;
-
-
 		void addInvite(const std::string &nick);
 		void removeInvite(const std::string &nick);
 		bool isInvited(const std::string &nick) const;
-
-
 		void broadcast(const std::string &msg, Client *except = NULL);
 		std::string getNamesList() const;
-
 
 	private:
 		std::string _name;

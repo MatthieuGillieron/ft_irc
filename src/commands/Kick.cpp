@@ -1,6 +1,4 @@
-
 #include "../../header/Server.hpp"
-
 
 // KICK <salon> <pseudo>{,<pseudo>} [:<raison>]
 // La diffusion precede le retrait : l'exclu doit recevoir sa propre exclusion,
@@ -13,7 +11,6 @@ void Server::handleKick(Client &client, const Message &msg)
 		sendNumeric(client, 461, "KICK", "Not enough parameters");
 		return;
 	}
-
 	Channel *chan = findChannel(msg.param[0]);
 	if (chan == NULL)
 	{
@@ -30,10 +27,8 @@ void Server::handleKick(Client &client, const Message &msg)
 		sendNumeric(client, 482, chan->getName(), "You're not channel operator");
 		return;
 	}
-
 	std::string reason = (msg.param.size() > 2) ? msg.param[2] : client.getNickName();
 	std::vector<std::string> nicks = splitList(msg.param[1], ',');
-
 	for (size_t i = 0; i < nicks.size(); i++)
 	{
 		if (nicks[i].empty())
@@ -55,7 +50,6 @@ void Server::handleKick(Client &client, const Message &msg)
 			return;
 	}
 }
-
 
 // INVITE <pseudo> <salon>
 // Sur un salon +i, seuls les operateurs peuvent inviter. La reponse 341 n'a pas

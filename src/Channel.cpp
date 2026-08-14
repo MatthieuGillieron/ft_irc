@@ -1,13 +1,8 @@
-
 #include "../header/Channel.hpp"
-
 
 Channel::Channel(const std::string &name)
 	: _name(name), _limit(0), _inviteOnly(false),
-	  _topicRestricted(false), _hasKey(false), _hasLimit(false)
-{
-}
-
+	  _topicRestricted(false), _hasKey(false), _hasLimit(false) {}
 
 void Channel::addMember(Client *client)
 {
@@ -39,7 +34,6 @@ bool Channel::isMember(Client *client) const
 	return false;
 }
 
-
 void Channel::addModo(Client *client)
 {
 	if (isModo(client))
@@ -68,7 +62,6 @@ bool Channel::isModo(Client *client) const
 	}
 	return false;
 }
-
 
 void Channel::addInvite(const std::string &nick)
 {

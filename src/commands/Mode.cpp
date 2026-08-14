@@ -1,6 +1,4 @@
-
 #include "../../header/Server.hpp"
-#include <cctype>
 
 
 static std::string numToString(size_t n)
@@ -17,7 +15,6 @@ static std::string numToString(size_t n)
 	return out;
 }
 
-
 // -1 si ce n'est pas un entier positif exploitable
 static long parseLimit(const std::string &s)
 {
@@ -33,7 +30,6 @@ static long parseLimit(const std::string &s)
 	}
 	return value;
 }
-
 
 // "+itk cle 10" : l'etat courant du salon, pour la reponse 324
 static std::string currentModes(Channel *chan)
@@ -58,7 +54,6 @@ static std::string currentModes(Channel *chan)
 	return modes + args;
 }
 
-
 // -k et -l ne prennent pas d'argument : les clients envoient "MODE #x -k" tout
 // court, et l'exiger renverrait un 461 sur une commande normale.
 static bool needsArg(char mode, bool adding)
@@ -69,7 +64,6 @@ static bool needsArg(char mode, bool adding)
 		return adding;
 	return false;
 }
-
 
 bool Server::applyOneMode(Client &client, Channel *chan, char mode, bool adding, std::string &arg)
 {
@@ -104,7 +98,6 @@ bool Server::applyOneMode(Client &client, Channel *chan, char mode, bool adding,
 		chan->setLimit(static_cast<size_t>(value));
 		return true;
 	}
-
 	Client *target = findClientByNick(arg);
 	if (target == NULL || !chan->isMember(target))
 	{
@@ -119,7 +112,6 @@ bool Server::applyOneMode(Client &client, Channel *chan, char mode, bool adding,
 		chan->removeModo(target);
 	return true;
 }
-
 
 // Parcourt "+ok-l bob" : le signe courant s'applique jusqu'au suivant, et
 // chaque flag consomme ou non un argument dans l'ordre d'arrivee. Seuls les
@@ -150,7 +142,6 @@ void Server::applyModes(Client &client, Channel *chan, const Message &msg)
 			sendNumeric(client, 472, std::string(1, c), "is unknown mode char to me");
 			continue;
 		}
-
 		std::string arg;
 		if (needsArg(c, adding))
 		{
@@ -161,7 +152,6 @@ void Server::applyModes(Client &client, Channel *chan, const Message &msg)
 			}
 			arg = msg.param[argIndex++];
 		}
-
 		if (!applyOneMode(client, chan, c, adding, arg))
 			continue;
 
@@ -175,14 +165,12 @@ void Server::applyModes(Client &client, Channel *chan, const Message &msg)
 		if (!arg.empty())
 			doneArgs += " " + arg;
 	}
-
 	if (doneModes.empty())
 		return;
-
+	
 	chan->broadcast(":" + buildPrefix(client) + " MODE " + chan->getName()
 		+ " " + doneModes + doneArgs);
 }
-
 
 // MODE <salon> [<flags> [<arguments>]]
 // Aucun mode utilisateur n'est gere : MODE <pseudo> est ignore. L'appartenance

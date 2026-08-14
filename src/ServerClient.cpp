@@ -6,7 +6,6 @@
 // d'entree jusqu'a epuiser la memoire.
 #define MAX_LINE_LENGTH 8192
 
-
 void Server::acceptClient()
 {
 	sockaddr_in aclient;
@@ -29,7 +28,6 @@ void Server::acceptClient()
 	_clients.push_back(new Client(clientFd));
 	std::cout << C_UP << "[+] New connexion" << RESET << std::endl;
 }
-
 
 // Le sujet interdit de consulter errno apres un recv : un retour <= 0 est donc
 // traite indistinctement comme un depart, poll() ayant deja signale le fd pret.
@@ -69,7 +67,6 @@ void Server::handleClient(int fd)
 		markDisconnect(fd);
 }
 
-
 // send peut n'ecrire qu'une partie du buffer : on n'efface que ce qui est parti,
 // le reste sera retente au prochain POLLOUT. Le sujet interdisant de consulter
 // errno, un echec laisse le buffer intact ; un client mort est ramasse par
@@ -90,7 +87,6 @@ void Server::flushClient(int fd)
 
 	client->eraseOutBuffer(0, bytesSent);
 }
-
 
 // Un meme fd peut etre signale deux fois dans le meme tour (POLLHUP + recv a 0).
 // Sans ce garde-fou, le second close() porterait sur un descripteur deja
@@ -127,7 +123,6 @@ void Server::disconnectClient(int fd)
 		for (size_t i = 0; i < chans.size(); i++)
 			leaveChannel(*client, chans[i]);
 	}
-
 	close(fd);
 	for (size_t i = 0; i < _pollfds.size(); i++)
 	{
@@ -147,7 +142,6 @@ void Server::disconnectClient(int fd)
 		}
 	}
 }
-
 
 Client* Server::findClient(int fd)
 {

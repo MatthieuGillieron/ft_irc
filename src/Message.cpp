@@ -1,5 +1,4 @@
 #include "../header/Message.hpp"
-#include <cctype>
 
 // Format d'une ligne IRC :
 //   [":" prefixe SPACE] commande [SPACE parametres] [SPACE ":" trailing]
@@ -20,7 +19,6 @@ Message Message::parse(std::string line)
             return msg;
         i = space + 1;
     }
-
     while (i < line.size() && line[i] == ' ')
         i++;
 
@@ -34,7 +32,6 @@ Message Message::parse(std::string line)
         unsigned char c = static_cast<unsigned char>(msg.command[k]);
         msg.command[k] = static_cast<char>(std::toupper(c));
     }
-
     while (i < line.size())
     {
         while (i < line.size() && line[i] == ' ')
@@ -47,12 +44,10 @@ Message Message::parse(std::string line)
             msg.param.push_back(line.substr(i + 1));
             break;
         }
-
         start = i;
         while (i < line.size() && line[i] != ' ')
             i++;
         msg.param.push_back(line.substr(start, i - start));
     }
-
     return msg;
 }

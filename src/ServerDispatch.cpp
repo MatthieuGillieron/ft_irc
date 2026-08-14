@@ -38,13 +38,11 @@ void Server::dispatcher(Client* client, Message msg)
 		handleQuit(*client, msg);
 		return;
 	}
-
 	if (!client->getRegistred())
 	{
 		sendNumeric(*client, 451, "You have not registered");
 		return;
 	}
-
 	if (msg.command == "JOIN")
 		handleJoin(*client, msg);
 	else if (msg.command == "PRIVMSG")
@@ -65,7 +63,6 @@ void Server::dispatcher(Client* client, Message msg)
 		sendNumeric(*client, 421, msg.command, "Unknown command");
 }
 
-
 // Recherche insensible a la casse : "#Test" et "#test" designent le meme salon.
 // C'est aussi ce qui empeche JOIN d'en creer deux variantes.
 Channel* Server::findChannel(const std::string& name)
@@ -77,7 +74,6 @@ Channel* Server::findChannel(const std::string& name)
 	}
 	return NULL;
 }
-
 
 // Le nom vide est refuse : il correspondrait a tout client pas encore nomme.
 Client* Server::findClientByNick(const std::string& nick)
@@ -92,7 +88,6 @@ Client* Server::findClientByNick(const std::string& nick)
 	}
 	return NULL;
 }
-
 
 // Utilise par QUIT, par le changement de pseudo et par la deconnexion.
 std::vector<Channel*> Server::getChannelsOf(Client* client)

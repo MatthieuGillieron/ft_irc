@@ -1,6 +1,4 @@
-
 #include "../../header/Server.hpp"
-
 
 // TOPIC <salon> consulte le sujet, TOPIC <salon> :<sujet> le change et
 // TOPIC <salon> : l'efface. La distinction tient au nombre de parametres : le

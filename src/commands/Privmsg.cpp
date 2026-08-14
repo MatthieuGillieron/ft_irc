@@ -1,6 +1,4 @@
-
 #include "../../header/Server.hpp"
-
 
 // PRIVMSG et NOTICE ne different que par le drapeau silent : le RFC interdit
 // d'emettre la moindre reponse automatique en retour d'un NOTICE, sous peine de
@@ -29,9 +27,7 @@ void Server::sendMessage(Client &client, const Message &msg, const std::string &
 			sendNumeric(client, 412, "No text to send");
 		return;
 	}
-
 	std::vector<std::string> targets = splitList(msg.param[0], ',');
-
 	for (size_t i = 0; i < targets.size(); i++)
 	{
 		std::string target = targets[i];
@@ -71,12 +67,10 @@ void Server::sendMessage(Client &client, const Message &msg, const std::string &
 	}
 }
 
-
 void Server::handlePrivmsg(Client &client, const Message &msg)
 {
 	sendMessage(client, msg, "PRIVMSG", false);
 }
-
 
 void Server::handleNotice(Client &client, const Message &msg)
 {
