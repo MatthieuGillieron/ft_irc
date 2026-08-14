@@ -194,13 +194,3 @@ Every generated change was compiled, run and tested against a live server before
 being kept; the behavioural claims in this README (no leaks, partial commands,
 abrupt disconnections, the flood-while-suspended case) correspond to tests that
 were actually executed. Nothing was merged that the team could not explain.
-
----
-
-## Known limitations
-
-- `JOIN` does not accept comma-separated channel lists
-- Only `#` channels are supported, not `&`
-- The *realname* parameter of `USER` is parsed but not stored
-- No user modes: `MODE <nickname>` is ignored
-- Bonus features (file transfer, bot) are not implemented
