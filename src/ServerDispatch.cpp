@@ -9,10 +9,8 @@ void Server::dispatcher(Client* client, Message msg)
 {
 	if (msg.command.empty())
 		return;
-
 	if (msg.command == "CAP")
 		return;
-
 	if (msg.command == "PASS")
 	{
 		handlePass(*client, msg);

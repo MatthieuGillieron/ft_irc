@@ -21,7 +21,6 @@ class Channel
 		bool hasKey() const { return _hasKey; }
 		bool hasLimit() const { return _hasLimit; }
 
-
 		void setTopic(const std::string &topic) { _topic = topic; }
 		void setInviteOnly(bool value) { _inviteOnly = value; }
 		void setTopicRestricted(bool value) { _topicRestricted = value; }
